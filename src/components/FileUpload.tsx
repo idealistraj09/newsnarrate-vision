@@ -76,6 +76,9 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
           <FileText className="h-4 w-4" /> 
           Supported format: PDF files only
         </p>
+        <p className="text-xs mt-1">
+          Note: For best results, use PDFs with selectable text rather than scanned images.
+        </p>
       </div>
     </div>
   );

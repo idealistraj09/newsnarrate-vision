@@ -10,11 +10,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
+// Import the worker directly from node_modules
+import { PDFWorker } from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+
 // Set up PDF.js worker correctly
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = PDFWorker;
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

@@ -19,11 +19,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['pdfjs-dist']
+    include: ['pdfjs-dist', 'pdfjs-dist/legacy/build/pdf.worker.mjs']
   },
   build: {
     commonjsOptions: {
-      include: [/pdfjs-dist/]
+      include: [/pdfjs-dist/, /node_modules/]
     }
   }
 }));
