@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceControls } from "@/components/VoiceControls";
@@ -5,6 +6,8 @@ import { toast } from "sonner";
 import * as pdfjs from 'pdfjs-dist';
 import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
+import { textToSpeech } from "@/utils/googleTTS";
+import { Card, CardContent } from "@/components/ui/card";
 
 // Ensure proper PDF.js worker configuration
 const pdfWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -17,6 +20,7 @@ const Index = () => {
   const [speed, setSpeed] = useState(1);
   const [pitch, setPitch] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; id: string }[]>([]);
 
   // Add abort controller for cleanup
   const abortController = useRef(new AbortController());
@@ -25,12 +29,33 @@ const Index = () => {
     // Initialize PDF.js
     console.log("PDF.js worker initialized with:", pdfWorkerSrc);
     
+    // Load previous uploads
+    loadPreviousUploads();
+    
     speechService.setStateChangeCallback(setIsPlaying);
     return () => {
       abortController.current.abort();
       speechService.stop();
     };
   }, []);
+
+  const loadPreviousUploads = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('newspapers')
+        .select('id, title')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      
+      if (data) {
+        setUploadedFiles(data.map(file => ({ name: file.title, id: file.id })));
+      }
+    } catch (err) {
+      console.error("Error loading previous uploads:", err);
+    }
+  };
 
   // Improved text extraction with better error handling
   const extractTextFromPDF = async (file: File): Promise<string> => {
@@ -105,7 +130,10 @@ const Index = () => {
         .from('newspapers')
         .upload(`${crypto.randomUUID()}.pdf`, file);
 
-      const { data: storageData, error: storageError } = await toast.promise(
+      // TypeScript fix: Safely handle the response
+      const { data: storageData, error: storageError } = await uploadPromise;
+
+      toast.promise(
         uploadPromise,
         {
           loading: 'Uploading PDF...',
@@ -122,14 +150,29 @@ const Index = () => {
         .insert({
           title: file.name,
           extracted_text: text.substring(0, 10000), // Store first 10k chars
-          pdf_url: storageData.path
+          pdf_url: storageData?.path || ''
         });
 
       if (dbError) throw dbError;
+      
+      // Refresh the file list
+      loadPreviousUploads();
 
       // Add preload before speaking
       await new Promise(resolve => setTimeout(resolve, 500));
-      speechService.speak(text, speed, pitch);
+      
+      // Use Web Speech API by default with fallback to Google TTS
+      try {
+        speechService.speak(text, speed, pitch);
+      } catch (speechError) {
+        console.error("Web Speech API error, falling back to Google TTS:", speechError);
+        const audioUrl = await textToSpeech({ 
+          text: text.substring(0, 3000), // First 3000 chars for demo
+          languageCode: 'en-US'
+        });
+        // Here you would handle playing the returned audio URL
+        console.log("Google TTS URL (for demo):", audioUrl);
+      }
 
     } catch (error: any) {
       toast.dismiss();
@@ -151,8 +194,7 @@ const Index = () => {
   };
 
   const handleSkipBack = () => {
-    // Reset and start from the beginning for now
-    // In a future iteration, we could implement more granular control
+    // Reset and start from the beginning
     if (extractedText) {
       speechService.speak(extractedText, speed, pitch);
     }
@@ -160,7 +202,6 @@ const Index = () => {
 
   const handleSkipForward = () => {
     // For now, this just stops the current speech
-    // In a future iteration, we could implement more granular control
     speechService.stop();
   };
 
@@ -172,6 +213,35 @@ const Index = () => {
   const handlePitchChange = (value: number) => {
     setPitch(value);
     speechService.setPitch(value);
+  };
+
+  const handleLoadSaved = async (id: string) => {
+    try {
+      toast.loading("Loading saved document...");
+      const { data, error } = await supabase
+        .from('newspapers')
+        .select('title, extracted_text, pdf_url')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('Document not found');
+
+      setSelectedFile({ name: data.title } as File);
+      setExtractedText(data.extracted_text || '');
+      
+      toast.success("Document loaded successfully!");
+      
+      // Start speaking the loaded text
+      await new Promise(resolve => setTimeout(resolve, 500));
+      speechService.speak(data.extracted_text || '', speed, pitch);
+      
+    } catch (error: any) {
+      console.error('Error loading saved document:', error);
+      toast.error(error.message || 'Failed to load document');
+    } finally {
+      toast.dismiss();
+    }
   };
 
   return (
@@ -192,7 +262,24 @@ const Index = () => {
         )}
 
         {!selectedFile ? (
-          <FileUpload onFileSelect={handleFileSelect} />
+          <div className="space-y-6">
+            <FileUpload onFileSelect={handleFileSelect} />
+            
+            {uploadedFiles.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-4">Previously Uploaded Documents</h2>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {uploadedFiles.map((file) => (
+                    <Card key={file.id} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => handleLoadSaved(file.id)}>
+                      <CardContent className="p-4">
+                        <p className="truncate">{file.name}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="bg-card p-6 rounded-lg border">
             <h2 className="text-xl font-semibold mb-4">

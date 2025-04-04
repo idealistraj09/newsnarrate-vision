@@ -37,38 +37,51 @@ export async function textToSpeech({
     text = chunks[0];
   }
 
-  // This should be done via a backend endpoint to protect your API key
-  console.log("For production use, implement this in a serverless function");
+  // In a real implementation, this would be done through a Supabase Edge Function
+  console.log("For production, implement this in a Supabase Edge Function to protect API keys");
   
-  // Creating request body according to Google Cloud TTS API
-  const requestBody = {
-    input: { text },
-    voice: { languageCode, name: voiceName },
-    audioConfig: {
-      audioEncoding: 'MP3',
-      pitch,
-      speakingRate
-    }
-  };
+  try {
+    // Creating request body according to Google Cloud TTS API
+    const requestBody = {
+      input: { text },
+      voice: { languageCode, name: voiceName },
+      audioConfig: {
+        audioEncoding: 'MP3',
+        pitch,
+        speakingRate
+      }
+    };
 
-  /**
-   * IMPORTANT: In a real implementation, you would make this request from your backend
-   * Example implementation (using Supabase Edge Function or similar):
-   */
-  
-  /*
-  const response = await fetch('https://your-backend-endpoint.com/text-to-speech', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, languageCode, voiceName, pitch, speakingRate })
-  });
-  
-  const data = await response.json();
-  return data.audioUrl;
-  */
-  
-  // For demo purposes, returning a placeholder
-  return "This is a placeholder. Implement with a real API key via backend.";
+    /**
+     * In a real implementation, you would make this request from a backend service
+     * Example implementation (using Supabase Edge Function):
+     */
+    
+    /*
+    const response = await fetch('https://ixgqducbuworkyafzryw.functions.supabase.co/google-tts', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}` 
+      },
+      body: JSON.stringify({ text, languageCode, voiceName, pitch, speakingRate })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`TTS API error: ${await response.text()}`);
+    }
+    
+    const data = await response.json();
+    return data.audioUrl;
+    */
+    
+    // For demo purposes, returning a placeholder URL that would point to an audio file
+    return "https://example.com/tts-audio.mp3";
+    
+  } catch (error) {
+    console.error("Error in text-to-speech conversion:", error);
+    throw error;
+  }
 }
 
 // Helper function to split text into chunks at sentence boundaries

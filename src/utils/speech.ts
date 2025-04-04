@@ -5,15 +5,34 @@ class SpeechService {
   private text: string = '';
   private currentPosition: number = 0;
   private chunkSize: number = 200; // Process text in smaller chunks to avoid issues
+  private voices: SpeechSynthesisVoice[] = [];
+  private isInitialized: boolean = false;
 
   constructor() {
     this.setupVoiceChangeListener();
+    this.initializeBrowserSpeech();
+  }
+
+  private initializeBrowserSpeech() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // Check if voices are already loaded
+      const availableVoices = speechSynthesis.getVoices();
+      if (availableVoices.length > 0) {
+        this.voices = availableVoices;
+        this.isInitialized = true;
+        console.log("Speech synthesis initialized with", availableVoices.length, "voices");
+      }
+    } else {
+      console.warn("Speech synthesis not supported in this browser");
+    }
   }
 
   private setupVoiceChangeListener() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       speechSynthesis.addEventListener('voiceschanged', () => {
-        console.log('Voices loaded:', speechSynthesis.getVoices().length);
+        this.voices = speechSynthesis.getVoices();
+        this.isInitialized = true;
+        console.log('Voices loaded:', this.voices.length);
       });
     }
   }
@@ -28,6 +47,12 @@ class SpeechService {
     if (!text || text.length === 0) {
       console.warn("No text to speak");
       return;
+    }
+
+    // Check browser support
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      console.error("Speech synthesis not supported");
+      throw new Error("Speech synthesis not supported in this browser");
     }
     
     this.text = text;
@@ -53,9 +78,12 @@ class SpeechService {
     this.utterance.pitch = pitch;
 
     // Get available voices
-    const voices = speechSynthesis.getVoices();
+    if (!this.isInitialized || this.voices.length === 0) {
+      this.voices = speechSynthesis.getVoices();
+    }
+
     // Try to find an English voice
-    const englishVoice = voices.find(voice => voice.lang.includes('en'));
+    const englishVoice = this.voices.find(voice => voice.lang.includes('en'));
     if (englishVoice) {
       this.utterance.voice = englishVoice;
     }
@@ -80,23 +108,35 @@ class SpeechService {
       this.onStateChange?.(false);
     };
 
-    speechSynthesis.speak(this.utterance);
+    try {
+      speechSynthesis.speak(this.utterance);
+    } catch (error) {
+      console.error("Error starting speech synthesis:", error);
+      this.onStateChange?.(false);
+      throw error;
+    }
   }
 
   pause() {
-    speechSynthesis.pause();
-    this.onStateChange?.(false);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      speechSynthesis.pause();
+      this.onStateChange?.(false);
+    }
   }
 
   resume() {
-    speechSynthesis.resume();
-    this.onStateChange?.(true);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      speechSynthesis.resume();
+      this.onStateChange?.(true);
+    }
   }
 
   stop() {
-    speechSynthesis.cancel();
-    this.currentPosition = 0;
-    this.onStateChange?.(false);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      this.currentPosition = 0;
+      this.onStateChange?.(false);
+    }
   }
 
   setSpeed(speed: number) {
@@ -109,6 +149,11 @@ class SpeechService {
     if (this.utterance) {
       this.utterance.pitch = pitch;
     }
+  }
+
+  // Check if speech synthesis is supported
+  isSpeechSynthesisSupported(): boolean {
+    return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }
 }
 
