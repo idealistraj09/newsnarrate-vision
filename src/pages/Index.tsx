@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceControls } from "@/components/VoiceControls";
@@ -8,10 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
 import { textToSpeech } from "@/utils/googleTTS";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
-// Ensure proper PDF.js worker configuration
-const pdfWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+// Set up PDF.js worker correctly
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url
+).toString();
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -27,7 +30,7 @@ const Index = () => {
 
   useEffect(() => {
     // Initialize PDF.js
-    console.log("PDF.js worker initialized with:", pdfWorkerSrc);
+    console.log("PDF.js worker initialized with:", pdfjs.GlobalWorkerOptions.workerSrc);
     
     // Load previous uploads
     loadPreviousUploads();
@@ -39,12 +42,13 @@ const Index = () => {
     };
   }, []);
 
+  // Fix loadPreviousUploads to use id instead of created_at for ordering
   const loadPreviousUploads = async () => {
     try {
       const { data, error } = await supabase
         .from('newspapers')
         .select('id, title')
-        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(10);
       
       if (error) throw error;
@@ -66,7 +70,7 @@ const Index = () => {
       const arrayBuffer = await file.arrayBuffer();
       console.log("File loaded into buffer, size:", arrayBuffer.byteLength);
       
-      // Load the PDF document
+      // Load the PDF document with improved error handling
       const loadingTask = pdfjs.getDocument({
         data: arrayBuffer,
         disableAutoFetch: true,
