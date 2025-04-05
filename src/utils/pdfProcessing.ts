@@ -95,13 +95,32 @@ const extractTextFromPDFBuffer = (buffer: ArrayBuffer): string => {
     .replace(/\\n|\\r/g, " ")            // Replace escape sequences with space
     .trim();
   
-  // Final filter to try to detect paragraphs of actual readable text
-  let paragraphs = cleanText.split(/\s{2,}|\.{2,}/).filter(p => {
-    // Only keep strings that look like actual text (contain letters and spaces)
-    return p.length > 20 && /[a-zA-Z]{3,}/.test(p) && p.split(' ').length >= 4;
+  // Advanced filtering to extract readable English text
+  const englishTextRegex = /[A-Za-z]{3,}\s+[A-Za-z]{2,}/;
+  const contentLines = cleanText.split(/\n+/);
+  
+  // Keep only lines that appear to be English text (have multiple consecutive English words)
+  const filteredLines = contentLines.filter(line => {
+    // Check if line contains meaningful English text
+    return englishTextRegex.test(line) && 
+           // Ensure line isn't just PDF metadata
+           !line.includes("ImageB") &&
+           !line.includes("XObject") &&
+           !line.includes("endstream") &&
+           line.length > 20;
   });
   
-  return paragraphs.join('\n\n');
+  // Join the filtered lines back together
+  let finalText = filteredLines.join("\n\n");
+  
+  // Post-processing to fix common issues
+  finalText = finalText
+    .replace(/([a-z])([A-Z])/g, "$1. $2")  // Add period between sentences (lowercase followed by uppercase)
+    .replace(/\s{2,}/g, " ")              // Normalize spacing
+    .replace(/\.{2,}/g, ".")              // Fix multiple periods
+    .trim();
+  
+  return finalText;
 };
 
 // Enhanced check if a PDF has extractable text

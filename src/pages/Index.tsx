@@ -5,11 +5,10 @@ import { VoiceControls } from "@/components/VoiceControls";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
-import { textToSpeech } from "@/utils/googleTTS";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { extractTextFromPDF, hasPDFExtractableText } from "@/utils/pdfProcessing";
+import { extractTextFromPDF } from "@/utils/pdfProcessing";
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -19,6 +18,7 @@ const Index = () => {
   const [pitch, setPitch] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; id: string }[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>("");
 
   // Add abort controller for cleanup
   const abortController = useRef(new AbortController());
@@ -34,7 +34,6 @@ const Index = () => {
     };
   }, []);
 
-  // Fix loadPreviousUploads to use id instead of created_at for ordering
   const loadPreviousUploads = async () => {
     try {
       const { data, error } = await supabase
@@ -53,29 +52,23 @@ const Index = () => {
     }
   };
 
-  // Enhanced file handling with validation and better error handling
+  // Enhanced file handling with improved text extraction
   const handleFileSelect = async (file: File) => {
     try {
-      if (file.size > 15 * 1024 * 1024) { // 15MB limit
-        throw new Error('File size exceeds 15MB limit');
-      }
-
       setSelectedFile(file);
       toast.loading("Extracting text from PDF...");
       setIsLoading(true);
       
-      // Check if PDF has extractable text
-      const hasText = await hasPDFExtractableText(file);
-      if (!hasText) {
-        toast.warning("This PDF might have limited extractable text. Results may vary.");
-      }
-      
-      // Use our PDF processing service
+      // Use our enhanced PDF processing service
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
       
-      toast.dismiss();
-      toast.success("PDF text extracted successfully!");
+      // Check if we actually got usable text
+      if (text.trim().length < 50) {
+        toast.warning("Limited text could be extracted. This might be a scanned document.");
+      } else {
+        toast.success("PDF text extracted successfully!");
+      }
 
       // Generate a unique filename for storage
       const fileExt = file.name.split('.').pop();
@@ -92,15 +85,13 @@ const Index = () => {
         toast.error("Failed to upload PDF to storage");
         throw storageError;
       }
-
-      toast.success('PDF uploaded successfully!');
       
       // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('newspapers')
         .getPublicUrl(filePath);
 
-      // Database operations - now with proper error handling
+      // Database operations 
       const { data: dbData, error: dbError } = await supabase
         .from('newspapers')
         .insert({
@@ -119,27 +110,17 @@ const Index = () => {
       // Refresh the file list
       loadPreviousUploads();
 
-      // Add preload before speaking
+      // Start speaking after a brief delay to ensure UI is updated
       await new Promise(resolve => setTimeout(resolve, 500));
+      speechService.speak(text, speed, pitch);
       
-      // Use Web Speech API by default with fallback to Google TTS
-      try {
-        speechService.speak(text, speed, pitch);
-      } catch (speechError) {
-        console.error("Web Speech API error, falling back to Google TTS:", speechError);
-        const audioUrl = await textToSpeech({ 
-          text: text.substring(0, 3000), // First 3000 chars for demo
-          languageCode: 'en-US'
-        });
-        console.log("Google TTS URL (for demo):", audioUrl);
-      }
-
     } catch (error: any) {
       toast.dismiss();
       console.error('Processing Error:', error);
       toast.error(error.message || 'Error processing PDF!');
     } finally {
       setIsLoading(false);
+      toast.dismiss();
     }
   };
 
@@ -173,6 +154,19 @@ const Index = () => {
   const handlePitchChange = (value: number) => {
     setPitch(value);
     speechService.setPitch(value);
+  };
+  
+  const handleVoiceChange = (voiceName: string) => {
+    setSelectedVoice(voiceName);
+    speechService.setVoice(voiceName);
+    
+    // If currently playing, restart with new voice
+    if (isPlaying && extractedText) {
+      speechService.stop();
+      setTimeout(() => {
+        speechService.speak(extractedText, speed, pitch);
+      }, 100);
+    }
   };
 
   const handleLoadSaved = async (id: string) => {
@@ -208,9 +202,9 @@ const Index = () => {
     <div className="min-h-screen pb-24 page-transition">
       <div className="container max-w-4xl mx-auto py-12">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Voice Newspaper</h1>
+          <h1 className="text-4xl font-bold mb-4">PDF Voice Reader</h1>
           <p className="text-lg text-muted-foreground">
-            Upload your newspaper PDF and listen to it
+            Upload your PDF and listen to it read aloud with clean, natural voice
           </p>
         </div>
 
@@ -241,17 +235,28 @@ const Index = () => {
             )}
           </div>
         ) : (
-          <div className="bg-card p-6 rounded-lg border">
-            <h2 className="text-xl font-semibold mb-4">
-              {selectedFile.name}
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              Your PDF is ready. Use the controls below to manage playback.
-            </p>
-            <div className="max-h-96 overflow-y-auto p-4 bg-muted/50 rounded">
-              {extractedText}
-            </div>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>{selectedFile.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Your PDF has been processed. Use the controls below to listen to the text.
+                </p>
+                <div className="max-h-96 overflow-y-auto p-4 bg-muted/50 rounded border">
+                  {extractedText ? (
+                    <div className="whitespace-pre-line">{extractedText}</div>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>No text could be extracted from this PDF.</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 
@@ -262,6 +267,7 @@ const Index = () => {
         onSkipForward={handleSkipForward}
         onSpeedChange={handleSpeedChange}
         onPitchChange={handlePitchChange}
+        onVoiceChange={handleVoiceChange}
         speed={speed}
         pitch={pitch}
       />

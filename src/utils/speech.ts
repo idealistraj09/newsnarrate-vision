@@ -7,6 +7,7 @@ class SpeechService {
   private chunkSize: number = 200; // Process text in smaller chunks to avoid issues
   private voices: SpeechSynthesisVoice[] = [];
   private isInitialized: boolean = false;
+  private selectedVoice: string | null = null;
 
   constructor() {
     this.setupVoiceChangeListener();
@@ -49,6 +50,9 @@ class SpeechService {
       return;
     }
 
+    // Preprocess text to improve speech quality
+    text = this.preprocessText(text);
+    
     // Check browser support
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       console.error("Speech synthesis not supported");
@@ -60,6 +64,18 @@ class SpeechService {
     
     // Some browsers have limitations on text length, so we'll process in chunks
     this.speakCurrentChunk(speed, pitch);
+  }
+
+  // Preprocess text to improve speech quality
+  private preprocessText(text: string): string {
+    // Fix common pronunciation issues
+    return text
+      .replace(/(\d+)\.(\d+)/g, "$1 point $2") // Convert decimals to "point"
+      .replace(/&/g, " and ")                  // Replace & with "and"
+      .replace(/(\w)-(\w)/g, "$1 $2")          // Add space between hyphenated words
+      .replace(/([.!?])\s+/g, "$1\n\n")        // Add paragraph breaks after sentences
+      .replace(/([A-Z][a-z]+)\s+([A-Z])/g, "$1.\n$2") // Add breaks between sentences without punctuation
+      .trim();
   }
 
   private speakCurrentChunk(speed: number, pitch: number) {
@@ -82,10 +98,29 @@ class SpeechService {
       this.voices = speechSynthesis.getVoices();
     }
 
-    // Try to find an English voice
-    const englishVoice = this.voices.find(voice => voice.lang.includes('en'));
-    if (englishVoice) {
-      this.utterance.voice = englishVoice;
+    // Try to find a natural-sounding English voice
+    let selectedVoice = null;
+    
+    if (this.selectedVoice) {
+      // Use previously selected voice if available
+      selectedVoice = this.voices.find(voice => voice.name === this.selectedVoice);
+    }
+    
+    if (!selectedVoice) {
+      // Look for premium voices first (usually sound better)
+      selectedVoice = this.voices.find(voice => 
+        voice.name.includes('Premium') && voice.lang.includes('en')
+      );
+      
+      // Fall back to any English voice
+      if (!selectedVoice) {
+        selectedVoice = this.voices.find(voice => voice.lang.includes('en'));
+      }
+    }
+    
+    if (selectedVoice) {
+      this.utterance.voice = selectedVoice;
+      this.selectedVoice = selectedVoice.name; // Remember this voice
     }
 
     this.utterance.onstart = () => {
@@ -149,6 +184,19 @@ class SpeechService {
     if (this.utterance) {
       this.utterance.pitch = pitch;
     }
+  }
+
+  // Get available voices
+  getVoices(): SpeechSynthesisVoice[] {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      return speechSynthesis.getVoices();
+    }
+    return [];
+  }
+
+  // Set voice by name
+  setVoice(voiceName: string) {
+    this.selectedVoice = voiceName;
   }
 
   // Check if speech synthesis is supported

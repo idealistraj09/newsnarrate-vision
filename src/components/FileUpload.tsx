@@ -63,9 +63,10 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
               toast.warning("This PDF might have limited extractable text. Results may vary.", {
                 duration: 5000
               });
+            } else {
+              toast.success("PDF file contains clean, extractable text!");
             }
             
-            toast.success("PDF file selected successfully!");
             onFileSelect(file);
           }
         };
@@ -116,7 +117,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
             <>
               <Upload className="w-12 h-12 text-muted-foreground" />
               <div className="text-center">
-                <p className="text-lg font-medium">Drag and drop your newspaper PDF here</p>
+                <p className="text-lg font-medium">Drag and drop your PDF here</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   or click to select a file (max 15MB)
                 </p>
@@ -156,7 +157,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         </p>
         <p className="flex items-center gap-2 mt-2">
           <Info className="h-4 w-4" /> 
-          For best results, use PDFs with selectable text rather than scanned images. Our enhanced reader works with most modern PDF files.
+          For best results, use PDFs with selectable text rather than scanned images. Our enhanced text extraction works with most PDF formats.
         </p>
       </div>
     </div>
