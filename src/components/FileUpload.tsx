@@ -134,9 +134,9 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
       )}
       
       {fileWarning && (
-        <Alert variant="warning" className="bg-amber-50 border-amber-200">
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-          <AlertDescription className="text-amber-700">{fileWarning}</AlertDescription>
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{fileWarning}</AlertDescription>
         </Alert>
       )}
       
