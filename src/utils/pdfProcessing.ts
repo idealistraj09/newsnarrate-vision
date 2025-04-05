@@ -1,7 +1,6 @@
-
 /**
  * Enhanced PDF Processing Service
- * Uses a more robust approach for PDF text extraction
+ * Uses a more robust approach for PDF text extraction with improved filtering
  */
 
 // Improved text extraction from PDF using FileReader
@@ -40,6 +39,7 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
 };
 
 // Enhanced text extraction algorithm with better support for different PDF formats
+// and improved filtering of non-readable content
 const extractTextFromPDFBuffer = (buffer: ArrayBuffer): string => {
   // Convert buffer to byte array
   const bytes = new Uint8Array(buffer);
@@ -75,13 +75,33 @@ const extractTextFromPDFBuffer = (buffer: ArrayBuffer): string => {
     }
   }
   
-  // Improved text cleanup with better handling for common PDF issues
-  return text
-    .replace(/\s+/g, " ")                // Replace multiple spaces with single space
+  // Significantly improved text cleanup with more aggressive filtering
+  let cleanText = text
+    // Remove PDF structural elements
+    .replace(/endobj|endstream|obj|stream|xref|trailer|startxref/g, ' ')
+    .replace(/\/[A-Za-z0-9]+\s*<<.*?>>/gs, ' ')  // Remove PDF dictionary objects
+    .replace(/\/[A-Za-z0-9]+/g, ' ')             // Remove PDF name objects
+    .replace(/\[\s*[0-9\s\.]+\s*\]/g, ' ')       // Remove PDF arrays
+    // Remove PDF metadata markers, headers and footers
+    .replace(/Text\/Image[A-Z]\/Image[A-Z]\/Image[A-Z]\]\/XObject<<\/Image\d+\s+\d+\s+\d+\s+R/g, ' ')
+    .replace(/en-US\s+en-US/g, ' ')              // Remove repeated language markers
+    
+    // Advanced non-English text filtering - Keep only Latin alphabet and common punctuation
+    .replace(/[^\x20-\x7E\s.,?!;:'"()[\]{}]/g, '') 
+    
+    // Basic cleanup
+    .replace(/\s+/g, ' ')                // Replace multiple spaces with single space
     .replace(/(\w)\s(\W)/g, "$1$2")      // Remove spaces between words and punctuation
     .replace(/\\n|\\r/g, " ")            // Replace escape sequences with space
-    .replace(/[^\x20-\x7E\xA0-\xFF]/g, "") // Remove non-printable characters
     .trim();
+  
+  // Final filter to try to detect paragraphs of actual readable text
+  let paragraphs = cleanText.split(/\s{2,}|\.{2,}/).filter(p => {
+    // Only keep strings that look like actual text (contain letters and spaces)
+    return p.length > 20 && /[a-zA-Z]{3,}/.test(p) && p.split(' ').length >= 4;
+  });
+  
+  return paragraphs.join('\n\n');
 };
 
 // Enhanced check if a PDF has extractable text
@@ -92,8 +112,9 @@ export const hasPDFExtractableText = async (file: File): Promise<boolean> => {
     // Better heuristic: check for meaningful text content
     const hasEnoughText = text.length > 100;
     const hasWordVariety = new Set(text.split(/\s+/).filter(w => w.length > 2)).size > 20;
+    const hasEnglishWords = /\b(the|and|that|have|for|not|with|you|this|but|his|from|they|say|her|she|will|one|all|would|there|their|what|out|about|who|get|which|when|make|can|like|time|just|him|know|take|into|year|your|good)\b/i.test(text);
     
-    return hasEnoughText && hasWordVariety;
+    return hasEnoughText && hasWordVariety && hasEnglishWords;
   } catch (error) {
     console.error("Error checking PDF text:", error);
     return false;

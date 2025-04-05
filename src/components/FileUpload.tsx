@@ -1,10 +1,10 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileText, AlertCircle, Info } from "lucide-react";
+import { Upload, FileText, AlertCircle, Info, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { hasPDFExtractableText, estimatePDFPageCount } from "@/utils/pdfProcessing";
+import { hasPDFExtractableText, estimatePDFPageCount, extractTextFromPDF } from "@/utils/pdfProcessing";
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
@@ -13,11 +13,13 @@ interface FileUploadProps {
 export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [fileWarning, setFileWarning] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [pdfInfo, setPdfInfo] = useState<{pages: number} | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setFileError(null);
+    setFileWarning(null);
     setPdfInfo(null);
     const file = acceptedFiles[0];
     
@@ -42,7 +44,22 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
             // Check if PDF has extractable text
             const hasText = await hasPDFExtractableText(file);
             
-            if (!hasText) {
+            // Quick quality check - extract a sample and check for common issues
+            const sampleText = await extractTextFromPDF(file);
+            const isLikelyPoorQuality = 
+              sampleText.includes('Text/Image') ||
+              sampleText.includes('endobj') ||
+              sampleText.includes('XObject') ||
+              /[^\x20-\x7E\s.,?!;:'"()[\]{}]/.test(sampleText.substring(0, 500)) || // Has non-English characters
+              sampleText.split(/\s+/).filter(w => w.length > 2).length < 20; // Not enough words
+              
+            if (isLikelyPoorQuality) {
+              setFileWarning("This PDF may contain scanned content or complex formatting. Text extraction quality might be limited.");
+              toast.warning("This PDF may have limited extractable text or complex formatting", {
+                duration: 5000
+              });
+            } else if (!hasText) {
+              setFileWarning("This PDF might have limited extractable text. Results may vary.");
               toast.warning("This PDF might have limited extractable text. Results may vary.", {
                 duration: 5000
               });
@@ -116,6 +133,13 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         </Alert>
       )}
       
+      {fileWarning && (
+        <Alert variant="warning" className="bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertDescription className="text-amber-700">{fileWarning}</AlertDescription>
+        </Alert>
+      )}
+      
       {pdfInfo && (
         <Alert>
           <Info className="h-4 w-4" />
@@ -132,7 +156,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         </p>
         <p className="flex items-center gap-2 mt-2">
           <Info className="h-4 w-4" /> 
-          For best results, use PDFs with selectable text. Our enhanced reader works with most modern PDF files.
+          For best results, use PDFs with selectable text rather than scanned images. Our enhanced reader works with most modern PDF files.
         </p>
       </div>
     </div>
