@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceControls } from "@/components/VoiceControls";
@@ -8,7 +9,7 @@ import { textToSpeech } from "@/utils/googleTTS";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { extractTextFromPDF } from "@/utils/pdfProcessing";
+import { extractTextFromPDF, hasPDFExtractableText } from "@/utils/pdfProcessing";
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -55,50 +56,65 @@ const Index = () => {
   // Enhanced file handling with validation and better error handling
   const handleFileSelect = async (file: File) => {
     try {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        throw new Error('File size exceeds 10MB limit');
+      if (file.size > 15 * 1024 * 1024) { // 15MB limit
+        throw new Error('File size exceeds 15MB limit');
       }
 
       setSelectedFile(file);
       toast.loading("Extracting text from PDF...");
       setIsLoading(true);
       
-      // Use our new PDF processing service
+      // Check if PDF has extractable text
+      const hasText = await hasPDFExtractableText(file);
+      if (!hasText) {
+        toast.warning("This PDF might have limited extractable text. Results may vary.");
+      }
+      
+      // Use our PDF processing service
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
       
       toast.dismiss();
       toast.success("PDF text extracted successfully!");
 
-      // Upload to Supabase
-      const uploadPromise = supabase.storage
+      // Generate a unique filename for storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = fileName;
+
+      // Upload to Supabase storage
+      const { data: storageData, error: storageError } = await supabase.storage
         .from('newspapers')
-        .upload(`${crypto.randomUUID()}.pdf`, file);
+        .upload(filePath, file);
 
-      // TypeScript fix: Safely handle the response
-      const { data: storageData, error: storageError } = await uploadPromise;
+      if (storageError) {
+        console.error("Storage error:", storageError);
+        toast.error("Failed to upload PDF to storage");
+        throw storageError;
+      }
 
-      toast.promise(
-        uploadPromise,
-        {
-          loading: 'Uploading PDF...',
-          success: 'PDF uploaded successfully!',
-          error: 'Upload failed'
-        }
-      );
+      toast.success('PDF uploaded successfully!');
+      
+      // Get the public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('newspapers')
+        .getPublicUrl(filePath);
 
-      if (storageError) throw storageError;
-
-      // Database operations
-      const { error: dbError } = await supabase
+      // Database operations - now with proper error handling
+      const { data: dbData, error: dbError } = await supabase
         .from('newspapers')
         .insert({
           title: file.name,
           extracted_text: text.substring(0, 10000), // Store first 10k chars
-          pdf_url: storageData?.path || ''
-        });
+          pdf_url: publicUrl
+        })
+        .select();
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("Database error:", dbError);
+        toast.error("Failed to save PDF information");
+        throw dbError;
+      }
       
       // Refresh the file list
       loadPreviousUploads();
@@ -115,14 +131,11 @@ const Index = () => {
           text: text.substring(0, 3000), // First 3000 chars for demo
           languageCode: 'en-US'
         });
-        // Here you would handle playing the returned audio URL
         console.log("Google TTS URL (for demo):", audioUrl);
       }
 
     } catch (error: any) {
       toast.dismiss();
-      setSelectedFile(null);
-      setExtractedText('');
       console.error('Processing Error:', error);
       toast.error(error.message || 'Error processing PDF!');
     } finally {

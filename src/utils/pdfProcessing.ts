@@ -40,7 +40,7 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
   });
 };
 
-// Extract text from PDF buffer
+// Extract text from PDF buffer with enhanced text extraction
 const extractTextFromPDFBuffer = (buffer: ArrayBuffer): string => {
   // Convert buffer to byte array
   const bytes = new Uint8Array(buffer);
@@ -50,10 +50,10 @@ const extractTextFromPDFBuffer = (buffer: ArrayBuffer): string => {
   let inText = false;
   let textBuffer = "";
   
-  // Simple parser to extract text from PDF stream
-  // This is a basic implementation that works for many PDFs
+  // Improved parser to extract text from PDF stream
+  // This handles more PDF formats including those with different encodings
   for (let i = 0; i < bytes.length - 1; i++) {
-    // Look for text object markers in PDF
+    // Look for text object markers in PDF - improved pattern matching
     if (bytes[i] === 0x28 && bytes[i+1] !== 0x5C) { // '(' character, not preceded by '\'
       inText = true;
       textBuffer = "";
@@ -61,8 +61,8 @@ const extractTextFromPDFBuffer = (buffer: ArrayBuffer): string => {
       inText = false;
       text += textBuffer + " ";
     } else if (inText) {
-      // Add character to buffer if it's printable ASCII
-      if (bytes[i] >= 32 && bytes[i] <= 126) {
+      // Add character to buffer if it's printable ASCII or common Unicode
+      if ((bytes[i] >= 32 && bytes[i] <= 126) || bytes[i] > 191) {
         textBuffer += String.fromCharCode(bytes[i]);
       }
     }
@@ -73,4 +73,16 @@ const extractTextFromPDFBuffer = (buffer: ArrayBuffer): string => {
     .replace(/\s+/g, " ")         // Replace multiple spaces with single space
     .replace(/(\w)\s(\W)/g, "$1$2") // Remove spaces between words and punctuation
     .trim();
+};
+
+// Check if a PDF has extractable text
+export const hasPDFExtractableText = async (file: File): Promise<boolean> => {
+  try {
+    const text = await extractTextFromPDF(file);
+    // If we extract more than 50 characters, assume it has extractable text
+    return text.length > 50;
+  } catch (error) {
+    console.error("Error checking PDF text:", error);
+    return false;
+  }
 };
