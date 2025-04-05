@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText, AlertCircle, Info } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { hasPDFExtractableText } from "@/utils/pdfProcessing";
+import { hasPDFExtractableText, estimatePDFPageCount } from "@/utils/pdfProcessing";
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
@@ -14,9 +14,11 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [pdfInfo, setPdfInfo] = useState<{pages: number} | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setFileError(null);
+    setPdfInfo(null);
     const file = acceptedFiles[0];
     
     if (file && file.type === "application/pdf") {
@@ -30,17 +32,27 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         setIsAnalyzing(true);
         toast.info("Analyzing PDF file...");
         
-        // Check if PDF has extractable text
-        const hasText = await hasPDFExtractableText(file);
-        
-        if (!hasText) {
-          toast.warning("This PDF might have limited extractable text. Results may vary.", {
-            duration: 5000
-          });
-        }
-        
-        toast.success("PDF file selected successfully!");
-        onFileSelect(file);
+        // Get page count estimate
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          if (e.target?.result) {
+            const pageCount = estimatePDFPageCount(e.target.result as ArrayBuffer);
+            setPdfInfo({ pages: pageCount });
+            
+            // Check if PDF has extractable text
+            const hasText = await hasPDFExtractableText(file);
+            
+            if (!hasText) {
+              toast.warning("This PDF might have limited extractable text. Results may vary.", {
+                duration: 5000
+              });
+            }
+            
+            toast.success("PDF file selected successfully!");
+            onFileSelect(file);
+          }
+        };
+        reader.readAsArrayBuffer(file);
       } catch (error) {
         console.error("Error analyzing PDF:", error);
         toast.error("Error analyzing PDF file");
@@ -104,6 +116,15 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         </Alert>
       )}
       
+      {pdfInfo && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            PDF with approximately {pdfInfo.pages} {pdfInfo.pages === 1 ? 'page' : 'pages'} detected.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="text-sm text-muted-foreground mt-4">
         <p className="flex items-center gap-2">
           <FileText className="h-4 w-4" /> 
@@ -111,7 +132,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
         </p>
         <p className="flex items-center gap-2 mt-2">
           <Info className="h-4 w-4" /> 
-          For best results, use PDFs with selectable text. This simple reader works with most modern PDF files.
+          For best results, use PDFs with selectable text. Our enhanced reader works with most modern PDF files.
         </p>
       </div>
     </div>
