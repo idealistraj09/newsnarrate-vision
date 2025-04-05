@@ -17,13 +17,5 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-  },
-  optimizeDeps: {
-    include: ['pdfjs-dist', 'pdfjs-dist/legacy/build/pdf.worker.mjs']
-  },
-  build: {
-    commonjsOptions: {
-      include: [/pdfjs-dist/, /node_modules/]
-    }
   }
 }));

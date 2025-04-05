@@ -77,7 +77,7 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
           Supported format: PDF files only
         </p>
         <p className="text-xs mt-1">
-          Note: For best results, use PDFs with selectable text rather than scanned images.
+          Note: For best results, use PDFs with selectable text. This simple reader works with most modern PDF files.
         </p>
       </div>
     </div>

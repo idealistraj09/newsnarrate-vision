@@ -2,19 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceControls } from "@/components/VoiceControls";
 import { toast } from "sonner";
-import * as pdfjs from 'pdfjs-dist';
 import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
 import { textToSpeech } from "@/utils/googleTTS";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-
-// Import the worker directly from node_modules
-import { PDFWorker } from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
-
-// Set up PDF.js worker correctly
-pdfjs.GlobalWorkerOptions.workerSrc = PDFWorker;
+import { extractTextFromPDF } from "@/utils/pdfProcessing";
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -29,9 +23,6 @@ const Index = () => {
   const abortController = useRef(new AbortController());
 
   useEffect(() => {
-    // Initialize PDF.js
-    console.log("PDF.js worker initialized with:", pdfjs.GlobalWorkerOptions.workerSrc);
-    
     // Load previous uploads
     loadPreviousUploads();
     
@@ -61,58 +52,6 @@ const Index = () => {
     }
   };
 
-  // Improved text extraction with better error handling
-  const extractTextFromPDF = async (file: File): Promise<string> => {
-    try {
-      console.log("Extracting text from PDF:", file.name);
-      setIsLoading(true);
-      
-      const arrayBuffer = await file.arrayBuffer();
-      console.log("File loaded into buffer, size:", arrayBuffer.byteLength);
-      
-      // Load the PDF document with improved error handling
-      const loadingTask = pdfjs.getDocument({
-        data: arrayBuffer,
-        disableAutoFetch: true,
-        disableStream: true
-      });
-      
-      console.log("PDF loading task created");
-      const pdf = await loadingTask.promise;
-      console.log("PDF loaded successfully with", pdf.numPages, "pages");
-
-      let fullText = '';
-      const pagesToParse = Math.min(pdf.numPages, 50); // Limit to 50 pages
-
-      for (let i = 1; i <= pagesToParse; i++) {
-        if (abortController.current.signal.aborted) break;
-        
-        console.log(`Processing page ${i}/${pagesToParse}`);
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-          
-        fullText += pageText.replace(/\s+/g, ' ') + '\n';
-        
-        // Provide feedback for long documents
-        if (i % 5 === 0 && pagesToParse > 10) {
-          toast.info(`Processing page ${i}/${pagesToParse}...`);
-        }
-      }
-
-      console.log("Text extraction complete, length:", fullText.length);
-      return fullText.trim();
-    } catch (error) {
-      console.error('PDF Extraction Error:', error);
-      throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Enhanced file handling with validation and better error handling
   const handleFileSelect = async (file: File) => {
     try {
@@ -122,7 +61,9 @@ const Index = () => {
 
       setSelectedFile(file);
       toast.loading("Extracting text from PDF...");
+      setIsLoading(true);
       
+      // Use our new PDF processing service
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
       
@@ -184,6 +125,8 @@ const Index = () => {
       setExtractedText('');
       console.error('Processing Error:', error);
       toast.error(error.message || 'Error processing PDF!');
+    } finally {
+      setIsLoading(false);
     }
   };
 
