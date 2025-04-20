@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
-import { VoiceControls } from "@/components/VoiceControls";
+// Removed the import for VoiceControls due to the error
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
@@ -9,17 +9,18 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Trash2 } from "lucide-react";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
 import { Button } from "@/components/ui/button";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle, 
-  AlertDialogTrigger 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { VoiceControls } from "@/components/VoiceControls";
 
 interface UploadedFile {
   id: string;
@@ -37,6 +38,7 @@ const Index = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
   const [fileToDelete, setFileToDelete] = useState<UploadedFile | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const abortController = useRef(new AbortController());
 
@@ -56,9 +58,9 @@ const Index = () => {
         .select('id, title, pdf_url')
         .order('uploaded_at', { ascending: false })
         .limit(10);
-      
+
       if (error) throw error;
-      
+
       if (data) {
         const formattedData: UploadedFile[] = data.map(item => ({
           id: item.id,
@@ -72,47 +74,53 @@ const Index = () => {
       toast.error("Failed to load previous uploads");
     }
   };
-
   const handleDeleteConfirmation = async () => {
+    window.speechSynthesis.cancel(); // Stop speech
+    console.log("Deleting file:", fileToDelete);
+
     if (!fileToDelete) return;
 
     try {
-      const pdfUrlParts = fileToDelete.pdf_url.split('/');
-      const fileName = pdfUrlParts[pdfUrlParts.length - 1];
-      
-      const { error: storageError } = await supabase.storage
-        .from('newspapers')
-        .remove([fileName]);
+      // Extract the file path from the URL
+      const filePath = fileToDelete.pdf_url.split("/").pop();
 
-      if (storageError) throw storageError;
+      if (!filePath) throw new Error("Invalid file URL");
 
-      const { error: dbError } = await supabase
-        .from('newspapers')
-        .delete()
-        .eq('id', fileToDelete.id);
+      // Delete from Supabase storage
+      const { error } = await supabase.storage
+        .from("newspapers")
+        .remove([filePath]);
 
-      if (dbError) throw dbError;
+      if (error) throw error;
 
-      await loadPreviousUploads();
+      // Remove from local state
+      setUploadedFiles((prev) =>
+        prev.filter((file) => file.id !== fileToDelete.id)
+      );
 
-      toast.success(`${fileToDelete.name} deleted successfully`);
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Failed to delete the file");
+      toast.success("File deleted successfully");
+
+    } catch (err) {
+      console.error("Error deleting file:", err);
+      toast.error("Failed to delete file");
     } finally {
       setFileToDelete(null);
+      setIsModalOpen(false);
     }
   };
+
+
+
 
   const handleFileSelect = async (file: File) => {
     try {
       setSelectedFile(file);
       toast.loading("Extracting text from PDF...");
       setIsLoading(true);
-      
+
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
-      
+
       if (text.trim().length < 50) {
         toast.warning("Limited text could be extracted. This might be a scanned document.");
       } else {
@@ -132,7 +140,7 @@ const Index = () => {
         toast.error("Failed to upload PDF to storage");
         throw storageError;
       }
-      
+
       const { data: { publicUrl } } = supabase.storage
         .from('newspapers')
         .getPublicUrl(filePath);
@@ -151,12 +159,12 @@ const Index = () => {
         toast.error("Failed to save PDF information");
         throw dbError;
       }
-      
+
       loadPreviousUploads();
 
       await new Promise(resolve => setTimeout(resolve, 500));
       speechService.speak(text, speed, pitch);
-      
+
     } catch (error: any) {
       toast.dismiss();
       console.error('Processing Error:', error);
@@ -190,17 +198,32 @@ const Index = () => {
   const handleSpeedChange = (value: number) => {
     setSpeed(value);
     speechService.setSpeed(value);
+
+    if (isPlaying && extractedText) {
+      speechService.stop();
+      setTimeout(() => {
+        speechService.speak(extractedText, value, pitch);
+      }, 100);
+    }
   };
 
   const handlePitchChange = (value: number) => {
     setPitch(value);
     speechService.setPitch(value);
+
+    if (isPlaying && extractedText) {
+      speechService.stop();
+      setTimeout(() => {
+        speechService.speak(extractedText, speed, value);
+      }, 100);
+    }
   };
-  
+
+
   const handleVoiceChange = (voiceName: string) => {
     setSelectedVoice(voiceName);
     speechService.setVoice(voiceName);
-    
+
     if (isPlaying && extractedText) {
       speechService.stop();
       setTimeout(() => {
@@ -223,14 +246,14 @@ const Index = () => {
 
       setSelectedFile({ name: data.title } as File);
       setExtractedText(data.extracted_text || '');
-      
+
       toast.success("Document loaded successfully!");
-      
+
       if (shouldAutoPlay) {
         await new Promise(resolve => setTimeout(resolve, 500));
         speechService.speak(data.extracted_text || '', speed, pitch);
       }
-      
+
     } catch (error: any) {
       console.error('Error loading saved document:', error);
       toast.error(error.message || 'Failed to load document');
@@ -259,51 +282,56 @@ const Index = () => {
         {!selectedFile ? (
           <div className="space-y-6">
             <FileUpload onFileSelect={handleFileSelect} />
-            
+
             {uploadedFiles.length > 0 && (
               <div className="mt-8">
                 <h2 className="text-xl font-semibold mb-4">Previously Uploaded Documents</h2>
                 <div className="grid gap-4 md:grid-cols-2">
                   {uploadedFiles.map((file) => (
                     <Card key={file.id} className="group relative">
-                      <CardContent 
+                      <CardContent
                         className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
                         onClick={() => handleLoadSaved(file.id, true)}
                       >
                         <p className="truncate">{file.name}</p>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                speechService.stop();
-                                setFileToDelete(file);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete "{fileToDelete?.name}" from your uploaded documents. 
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleDeleteConfirmation}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFileToDelete(file);
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-red-500"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </CardContent>
+
+                      <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete “{fileToDelete?.name}”?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this PDF? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setIsModalOpen(false)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteConfirmation}>
+                              Confirm Delete
+                            </AlertDialogAction>
+
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </Card>
+
+
                   ))}
                 </div>
               </div>
