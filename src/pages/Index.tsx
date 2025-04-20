@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceControls } from "@/components/VoiceControls";
@@ -21,6 +22,13 @@ import {
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
 
+// Define a clear interface for our uploaded files
+interface UploadedFile {
+  id: string;
+  name: string;
+  pdf_url: string;
+}
+
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -28,9 +36,9 @@ const Index = () => {
   const [speed, setSpeed] = useState(1);
   const [pitch, setPitch] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; id: string; pdf_url: string }[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
-  const [fileToDelete, setFileToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<UploadedFile | null>(null);
 
   const abortController = useRef(new AbortController());
 
@@ -56,7 +64,13 @@ const Index = () => {
       if (error) throw error;
       
       if (data) {
-        setUploadedFiles(data as { name: string; id: string; pdf_url: string }[]);
+        // Convert data to match our UploadedFile interface
+        const formattedData: UploadedFile[] = data.map(item => ({
+          id: item.id,
+          name: item.title, // Map 'title' from DB to 'name' for component
+          pdf_url: item.pdf_url || ''
+        }));
+        setUploadedFiles(formattedData);
       }
     } catch (err) {
       console.error("Error loading previous uploads:", err);
@@ -283,7 +297,7 @@ const Index = () => {
                               className="opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setFileToDelete({ id: file.id, name: file.name, pdf_url: file.pdf_url });
+                                setFileToDelete(file);
                               }}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
