@@ -51,20 +51,27 @@ const Index = () => {
 
   const loadPreviousUploads = async () => {
     try {
+      console.log("Loading previous uploads...");
       const { data, error } = await supabase
         .from('newspapers')
         .select('id, title, pdf_url')
         .order('uploaded_at', { ascending: false })
         .limit(10);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching uploads:", error);
+        throw error;
+      }
 
+      console.log("Fetched data:", data);
+      
       if (data) {
         const formattedData: UploadedFile[] = data.map(item => ({
           id: item.id,
           name: item.title,
           pdf_url: item.pdf_url || ''
         }));
+        console.log("Formatted data:", formattedData);
         setUploadedFiles(formattedData);
       }
     } catch (err) {
@@ -85,21 +92,23 @@ const Index = () => {
       console.log("Deleting file:", fileToDelete);
       
       // Step 1: Delete the database record first
-      const { error: dbError } = await supabase
+      const { error: dbError, data: deletedData } = await supabase
         .from('newspapers')
         .delete()
-        .eq('id', fileToDelete.id);
+        .eq('id', fileToDelete.id)
+        .select();
       
       if (dbError) {
         console.error("Database deletion error:", dbError);
         throw dbError;
       }
       
+      console.log("Database deletion response:", deletedData);
+      
       // Step 2: Extract the file path from the URL
-      // The URL structure is typically like: https://domain.com/storage/v1/object/public/bucket-name/file-path
       const urlParts = fileToDelete.pdf_url.split('/');
-      const bucketName = 'newspapers'; // This should be your actual bucket name
       const fileName = urlParts[urlParts.length - 1];
+      const bucketName = 'newspapers';
       
       console.log("Attempting to delete storage file:", fileName);
       
@@ -111,7 +120,6 @@ const Index = () => {
         
         if (storageError) {
           console.error("Storage deletion error:", storageError);
-          // We don't throw here because the database record is already deleted
           toast.warning("File deleted from database but storage cleanup failed");
         }
       }
