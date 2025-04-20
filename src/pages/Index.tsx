@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceControls } from "@/components/VoiceControls";
@@ -7,8 +6,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Trash2 } from "lucide-react";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
+import { Button } from "@/components/ui/button";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -17,10 +28,10 @@ const Index = () => {
   const [speed, setSpeed] = useState(1);
   const [pitch, setPitch] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; id: string }[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; id: string; pdf_url: string }[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("");
+  const [fileToDelete, setFileToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  // Add abort controller for cleanup
   const abortController = useRef(new AbortController());
 
   useEffect(() => {
@@ -38,21 +49,55 @@ const Index = () => {
     try {
       const { data, error } = await supabase
         .from('newspapers')
-        .select('id, title')
-        .order('id', { ascending: false })
+        .select('id, title, pdf_url')
+        .order('uploaded_at', { ascending: false })
         .limit(10);
       
       if (error) throw error;
       
       if (data) {
-        setUploadedFiles(data.map(file => ({ name: file.title, id: file.id })));
+        setUploadedFiles(data as { name: string; id: string; pdf_url: string }[]);
       }
     } catch (err) {
       console.error("Error loading previous uploads:", err);
+      toast.error("Failed to load previous uploads");
     }
   };
 
-  // Enhanced file handling with improved text extraction
+  const handleDeleteConfirmation = async () => {
+    if (!fileToDelete) return;
+
+    try {
+      // Delete from storage
+      const pdfUrlParts = fileToDelete.pdf_url.split('/');
+      const fileName = pdfUrlParts[pdfUrlParts.length - 1];
+      
+      const { error: storageError } = await supabase.storage
+        .from('newspapers')
+        .remove([fileName]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('newspapers')
+        .delete()
+        .eq('id', fileToDelete.id);
+
+      if (dbError) throw dbError;
+
+      // Refresh the list
+      await loadPreviousUploads();
+
+      toast.success(`${fileToDelete.name} deleted successfully`);
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete the file");
+    } finally {
+      setFileToDelete(null);
+    }
+  };
+
   const handleFileSelect = async (file: File) => {
     try {
       setSelectedFile(file);
@@ -224,9 +269,42 @@ const Index = () => {
                 <h2 className="text-xl font-semibold mb-4">Previously Uploaded Documents</h2>
                 <div className="grid gap-4 md:grid-cols-2">
                   {uploadedFiles.map((file) => (
-                    <Card key={file.id} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => handleLoadSaved(file.id)}>
-                      <CardContent className="p-4">
+                    <Card key={file.id} className="group relative">
+                      <CardContent 
+                        className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
+                        onClick={() => handleLoadSaved(file.id)}
+                      >
                         <p className="truncate">{file.name}</p>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFileToDelete({ id: file.id, name: file.name, pdf_url: file.pdf_url });
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete "{fileToDelete?.name}" from your uploaded documents. 
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleDeleteConfirmation}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </CardContent>
                     </Card>
                   ))}
