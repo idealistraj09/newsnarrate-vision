@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
-// Removed the import for VoiceControls due to the error
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
@@ -18,7 +17,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { VoiceControls } from "@/components/VoiceControls";
 
@@ -74,43 +72,69 @@ const Index = () => {
       toast.error("Failed to load previous uploads");
     }
   };
+
   const handleDeleteConfirmation = async () => {
-    window.speechSynthesis.cancel(); // Stop speech
-    console.log("Deleting file:", fileToDelete);
-
-    if (!fileToDelete) return;
-
+    speechService.stop(); // Stop any ongoing speech
+    
+    if (!fileToDelete) {
+      setIsModalOpen(false);
+      return;
+    }
+    
     try {
-      // Extract the file path from the URL
-      const filePath = fileToDelete.pdf_url.split("/").pop();
-
-      if (!filePath) throw new Error("Invalid file URL");
-
-      // Delete from Supabase storage
-      const { error } = await supabase.storage
-        .from("newspapers")
-        .remove([filePath]);
-
-      if (error) throw error;
-
-      // Remove from local state
-      setUploadedFiles((prev) =>
-        prev.filter((file) => file.id !== fileToDelete.id)
-      );
-
+      console.log("Deleting file:", fileToDelete);
+      
+      // Step 1: Delete the database record first
+      const { error: dbError } = await supabase
+        .from('newspapers')
+        .delete()
+        .eq('id', fileToDelete.id);
+      
+      if (dbError) {
+        console.error("Database deletion error:", dbError);
+        throw dbError;
+      }
+      
+      // Step 2: Extract the file path from the URL
+      // The URL structure is typically like: https://domain.com/storage/v1/object/public/bucket-name/file-path
+      const urlParts = fileToDelete.pdf_url.split('/');
+      const bucketName = 'newspapers'; // This should be your actual bucket name
+      const fileName = urlParts[urlParts.length - 1];
+      
+      console.log("Attempting to delete storage file:", fileName);
+      
+      // Step 3: Only attempt to delete from storage if we have a valid file name
+      if (fileName) {
+        const { error: storageError } = await supabase.storage
+          .from(bucketName)
+          .remove([fileName]);
+        
+        if (storageError) {
+          console.error("Storage deletion error:", storageError);
+          // We don't throw here because the database record is already deleted
+          toast.warning("File deleted from database but storage cleanup failed");
+        }
+      }
+      
+      // Step 4: Update local state to remove the file from the list
+      setUploadedFiles(prev => prev.filter(file => file.id !== fileToDelete.id));
+      
+      // Reset any active file if it was the one being deleted
+      if (selectedFile && typeof selectedFile === 'object' && 'name' in selectedFile && 
+          selectedFile.name === fileToDelete.name) {
+        setSelectedFile(null);
+        setExtractedText("");
+      }
+      
       toast.success("File deleted successfully");
-
     } catch (err) {
-      console.error("Error deleting file:", err);
+      console.error("Error in deletion process:", err);
       toast.error("Failed to delete file");
     } finally {
       setFileToDelete(null);
       setIsModalOpen(false);
     }
   };
-
-
-
 
   const handleFileSelect = async (file: File) => {
     try {
@@ -219,7 +243,6 @@ const Index = () => {
     }
   };
 
-
   const handleVoiceChange = (voiceName: string) => {
     setSelectedVoice(voiceName);
     speechService.setVoice(voiceName);
@@ -295,47 +318,43 @@ const Index = () => {
                       >
                         <p className="truncate">{file.name}</p>
 
-                        <div
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-red-500"
                           onClick={(e) => {
                             e.stopPropagation();
                             setFileToDelete(file);
                             setIsModalOpen(true);
                           }}
                         >
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-muted-foreground hover:text-red-500"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </CardContent>
-
-                      <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete “{fileToDelete?.name}”?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this PDF? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setIsModalOpen(false)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteConfirmation}>
-                              Confirm Delete
-                            </AlertDialogAction>
-
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
                     </Card>
-
-
                   ))}
                 </div>
               </div>
             )}
+
+            <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Delete "{fileToDelete?.name}"?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this PDF? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setIsModalOpen(false)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteConfirmation}>
+                    Confirm Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         ) : (
           <Card>
