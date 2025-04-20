@@ -3,7 +3,19 @@ import React, { useEffect, useState } from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { speechService } from "@/utils/speech";
 
 interface VoiceControlsProps {
@@ -94,26 +106,48 @@ export const VoiceControls = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Speed: {speed.toFixed(1)}x</label>
-              <Slider
-                value={[speed]}
-                onValueChange={(value) => onSpeedChange(value[0])}
-                min={0.5}
-                max={2}
-                step={0.1}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Pitch: {pitch.toFixed(1)}</label>
-              <Slider
-                value={[pitch]}
-                onValueChange={(value) => onPitchChange(value[0])}
-                min={0.5}
-                max={2}
-                step={0.1}
-              />
-            </div>
+            <TooltipProvider>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Speed: {speed.toFixed(1)}x</label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Slider
+                        value={[speed]}
+                        onValueChange={(value) => onSpeedChange(value[0])}
+                        min={0.5}
+                        max={2}
+                        step={0.1}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Reading speed: {speed.toFixed(1)}x</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Pitch: {pitch.toFixed(1)}</label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Slider
+                        value={[pitch]}
+                        onValueChange={(value) => onPitchChange(value[0])}
+                        min={0.5}
+                        max={2}
+                        step={0.1}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Voice pitch: {pitch.toFixed(1)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+
             <div>
               <label className="text-sm font-medium mb-2 block">Voice</label>
               {availableVoices.length > 0 ? (

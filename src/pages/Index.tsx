@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceControls } from "@/components/VoiceControls";
@@ -22,7 +21,6 @@ import {
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
 
-// Define a clear interface for our uploaded files
 interface UploadedFile {
   id: string;
   name: string;
@@ -43,9 +41,7 @@ const Index = () => {
   const abortController = useRef(new AbortController());
 
   useEffect(() => {
-    // Load previous uploads
     loadPreviousUploads();
-    
     speechService.setStateChangeCallback(setIsPlaying);
     return () => {
       abortController.current.abort();
@@ -64,10 +60,9 @@ const Index = () => {
       if (error) throw error;
       
       if (data) {
-        // Convert data to match our UploadedFile interface
         const formattedData: UploadedFile[] = data.map(item => ({
           id: item.id,
-          name: item.title, // Map 'title' from DB to 'name' for component
+          name: item.title,
           pdf_url: item.pdf_url || ''
         }));
         setUploadedFiles(formattedData);
@@ -82,7 +77,6 @@ const Index = () => {
     if (!fileToDelete) return;
 
     try {
-      // Delete from storage
       const pdfUrlParts = fileToDelete.pdf_url.split('/');
       const fileName = pdfUrlParts[pdfUrlParts.length - 1];
       
@@ -92,7 +86,6 @@ const Index = () => {
 
       if (storageError) throw storageError;
 
-      // Delete from database
       const { error: dbError } = await supabase
         .from('newspapers')
         .delete()
@@ -100,7 +93,6 @@ const Index = () => {
 
       if (dbError) throw dbError;
 
-      // Refresh the list
       await loadPreviousUploads();
 
       toast.success(`${fileToDelete.name} deleted successfully`);
@@ -118,23 +110,19 @@ const Index = () => {
       toast.loading("Extracting text from PDF...");
       setIsLoading(true);
       
-      // Use our enhanced PDF processing service
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
       
-      // Check if we actually got usable text
       if (text.trim().length < 50) {
         toast.warning("Limited text could be extracted. This might be a scanned document.");
       } else {
         toast.success("PDF text extracted successfully!");
       }
 
-      // Generate a unique filename for storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = fileName;
 
-      // Upload to Supabase storage
       const { data: storageData, error: storageError } = await supabase.storage
         .from('newspapers')
         .upload(filePath, file);
@@ -145,17 +133,15 @@ const Index = () => {
         throw storageError;
       }
       
-      // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('newspapers')
         .getPublicUrl(filePath);
 
-      // Database operations 
       const { data: dbData, error: dbError } = await supabase
         .from('newspapers')
         .insert({
           title: file.name,
-          extracted_text: text.substring(0, 10000), // Store first 10k chars
+          extracted_text: text.substring(0, 10000),
           pdf_url: publicUrl
         })
         .select();
@@ -166,10 +152,8 @@ const Index = () => {
         throw dbError;
       }
       
-      // Refresh the file list
       loadPreviousUploads();
 
-      // Start speaking after a brief delay to ensure UI is updated
       await new Promise(resolve => setTimeout(resolve, 500));
       speechService.speak(text, speed, pitch);
       
@@ -194,14 +178,12 @@ const Index = () => {
   };
 
   const handleSkipBack = () => {
-    // Reset and start from the beginning
     if (extractedText) {
       speechService.speak(extractedText, speed, pitch);
     }
   };
 
   const handleSkipForward = () => {
-    // For now, this just stops the current speech
     speechService.stop();
   };
 
@@ -219,7 +201,6 @@ const Index = () => {
     setSelectedVoice(voiceName);
     speechService.setVoice(voiceName);
     
-    // If currently playing, restart with new voice
     if (isPlaying && extractedText) {
       speechService.stop();
       setTimeout(() => {
@@ -228,7 +209,7 @@ const Index = () => {
     }
   };
 
-  const handleLoadSaved = async (id: string) => {
+  const handleLoadSaved = async (id: string, shouldAutoPlay = true) => {
     try {
       toast.loading("Loading saved document...");
       const { data, error } = await supabase
@@ -245,9 +226,10 @@ const Index = () => {
       
       toast.success("Document loaded successfully!");
       
-      // Start speaking the loaded text
-      await new Promise(resolve => setTimeout(resolve, 500));
-      speechService.speak(data.extracted_text || '', speed, pitch);
+      if (shouldAutoPlay) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        speechService.speak(data.extracted_text || '', speed, pitch);
+      }
       
     } catch (error: any) {
       console.error('Error loading saved document:', error);
@@ -286,7 +268,7 @@ const Index = () => {
                     <Card key={file.id} className="group relative">
                       <CardContent 
                         className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
-                        onClick={() => handleLoadSaved(file.id)}
+                        onClick={() => handleLoadSaved(file.id, true)}
                       >
                         <p className="truncate">{file.name}</p>
                         <AlertDialog>
@@ -297,6 +279,7 @@ const Index = () => {
                               className="opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                speechService.stop();
                                 setFileToDelete(file);
                               }}
                             >
