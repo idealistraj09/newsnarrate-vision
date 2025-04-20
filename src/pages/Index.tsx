@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { toast } from "sonner";
@@ -89,9 +90,9 @@ const Index = () => {
     }
     
     try {
-      console.log("Deleting file:", fileToDelete);
+      console.log("Starting deletion for file ID:", fileToDelete.id);
       
-      // Step 1: Delete the database record first
+      // Try with explicit error handling and verification
       const { error: dbError, data: deletedData } = await supabase
         .from('newspapers')
         .delete()
@@ -104,6 +105,20 @@ const Index = () => {
       }
       
       console.log("Database deletion response:", deletedData);
+      
+      // Verify deletion success
+      const { data: checkData } = await supabase
+        .from('newspapers')
+        .select('id')
+        .eq('id', fileToDelete.id)
+        .single();
+        
+      if (checkData) {
+        console.error("Deletion verification failed - record still exists:", checkData);
+        throw new Error("Failed to delete record from database");
+      }
+      
+      console.log("Deletion verification passed - record no longer exists in database");
       
       // Step 2: Extract the file path from the URL
       const urlParts = fileToDelete.pdf_url.split('/');
@@ -121,6 +136,8 @@ const Index = () => {
         if (storageError) {
           console.error("Storage deletion error:", storageError);
           toast.warning("File deleted from database but storage cleanup failed");
+        } else {
+          console.log("Storage file deleted successfully");
         }
       }
       
@@ -137,7 +154,7 @@ const Index = () => {
       toast.success("File deleted successfully");
     } catch (err) {
       console.error("Error in deletion process:", err);
-      toast.error("Failed to delete file");
+      toast.error("Failed to delete file. Please try again.");
     } finally {
       setFileToDelete(null);
       setIsModalOpen(false);
