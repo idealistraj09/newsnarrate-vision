@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,12 +19,14 @@ const App: React.FC = () => {
         <Toaster />
         <Sonner />
         <Router>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/main" element={<Index />} />
-            <Route path="/trending-news" element={<TrendingNewsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <div className="page-transition">
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/main" element={<Index />} />
+              <Route path="/trending-news" element={<TrendingNewsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
         </Router>
       </TooltipProvider>
     </QueryClientProvider>
