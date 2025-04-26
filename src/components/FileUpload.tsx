@@ -1,15 +1,18 @@
+
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileText, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { Upload, FileText, AlertCircle, Info, AlertTriangle, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { hasPDFExtractableText, estimatePDFPageCount, extractTextFromPDF } from "@/utils/pdfProcessing";
+import { Button } from "@/components/ui/button";
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
+  resetFileState?: () => void;
 }
 
-export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
+export const FileUpload = ({ onFileSelect, resetFileState }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileWarning, setFileWarning] = useState<string | null>(null);
@@ -17,9 +20,11 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
   const [pdfInfo, setPdfInfo] = useState<{ pages: number } | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    // Reset previous state
     setFileError(null);
     setFileWarning(null);
     setPdfInfo(null);
+
     const file = acceptedFiles[0];
 
     if (!file || file.type !== "application/pdf") {
@@ -80,6 +85,12 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
     disabled: isAnalyzing,
   });
 
+  const handleReset = () => {
+    if (resetFileState) {
+      resetFileState();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div
@@ -88,20 +99,20 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
           isAnalyzing ? "opacity-50 cursor-not-allowed" : ""
         } ${
           isDragActive || isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-primary/50"
+            ? "border-brand-purple bg-brand-purple/5"
+            : "border-muted-foreground/25 hover:border-brand-purple/50"
         }`}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center gap-4">
           {isAnalyzing ? (
             <>
-              <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+              <div className="h-12 w-12 rounded-full border-4 border-brand-purple border-t-transparent animate-spin"></div>
               <p className="text-lg font-medium">Analyzing PDF...</p>
             </>
           ) : (
             <>
-              <Upload className="w-12 h-12 text-muted-foreground" />
+              <UploadCloud className="w-12 h-12 text-brand-purple" />
               <div className="text-center">
                 <p className="text-lg font-medium">Drag and drop your PDF here</p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -134,6 +145,19 @@ export const FileUpload = ({ onFileSelect }: FileUploadProps) => {
             PDF with approximately {pdfInfo.pages} {pdfInfo.pages === 1 ? "page" : "pages"} detected.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Add a reset button if resetFileState is provided */}
+      {resetFileState && (
+        <div className="flex justify-center mt-4">
+          <Button 
+            variant="outline" 
+            onClick={handleReset}
+            className="text-brand-purple hover:bg-brand-purple/10"
+          >
+            <UploadCloud className="mr-2 h-4 w-4" /> Upload Another PDF
+          </Button>
+        </div>
       )}
 
       <div className="text-sm text-muted-foreground mt-4">

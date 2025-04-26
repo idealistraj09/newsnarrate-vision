@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Trash2, BookOpen } from "lucide-react";
+import { AlertCircle, Trash2, BookOpen, RotateCw } from "lucide-react";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,6 +84,13 @@ const Index = () => {
       console.error("Error loading previous uploads:", err);
       toast.error("Failed to load previous uploads");
     }
+  };
+
+  const resetFileState = () => {
+    setSelectedFile(null);
+    setExtractedText("");
+    setSummary(null);
+    setIsLoading(false);
   };
 
   const handleDeleteConfirmation = async () => {
@@ -167,10 +174,9 @@ const Index = () => {
 
   const handleFileSelect = async (file: File) => {
     try {
-      setSelectedFile(file);
+      resetFileState(); // Reset previous file state
       toast.loading("Extracting text from PDF...");
       setIsLoading(true);
-      setSummary(null);
 
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
@@ -346,9 +352,9 @@ const Index = () => {
         <div className="min-h-screen pb-24 page-transition">
           <div className="container max-w-4xl mx-auto py-12">
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold mb-4">PDF Voice Reader</h1>
+              <h1 className="text-4xl font-bold mb-4 text-brand-purple">PDF Voice Reader</h1>
               <p className="text-lg text-muted-foreground">
-                Upload your PDF and listen to it read aloud with clean, natural voice
+                Upload, read, and listen to your PDFs with AI-powered insights
               </p>
             </div>
 
@@ -359,65 +365,84 @@ const Index = () => {
               </div>
             )}
 
-            {!selectedFile ? (
-              <div className="space-y-6">
-                <FileUpload onFileSelect={handleFileSelect} />
+            <div className="space-y-6">
+              <FileUpload 
+                onFileSelect={handleFileSelect} 
+                resetFileState={resetFileState}
+              />
 
-                {uploadedFiles.length > 0 && (
-                  <div className="mt-8 animate-fade-in">
-                    <h2 className="text-xl font-semibold mb-4">Previously Uploaded Documents</h2>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {uploadedFiles.map((file) => (
-                        <Card key={file.id} className="group relative card-hover">
-                          <CardContent
-                            className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
-                            onClick={() => handleLoadSaved(file.id, true)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-brand-purple" />
-                              <p className="truncate">{file.name}</p>
-                            </div>
-
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-muted-foreground hover:text-red-500"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFileToDelete(file);
-                                setIsModalOpen(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+              {uploadedFiles.length > 0 && (
+                <div className="mt-8 animate-fade-in">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">
+                      Previously Uploaded Documents
+                    </h2>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={loadPreviousUploads}
+                    >
+                      <RotateCw className="mr-2 h-4 w-4" /> Refresh List
+                    </Button>
                   </div>
-                )}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {uploadedFiles.map((file) => (
+                      <Card 
+                        key={file.id} 
+                        className="group relative card-hover overflow-hidden"
+                      >
+                        <CardContent
+                          className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
+                          onClick={() => handleLoadSaved(file.id, true)}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <BookOpen className="w-4 h-4 text-brand-purple flex-shrink-0" />
+                            <p className="truncate max-w-[200px]">
+                              {file.name}
+                            </p>
+                          </div>
 
-                <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Delete "{fileToDelete?.name}"?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete this PDF? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => setIsModalOpen(false)}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteConfirmation}>
-                        Confirm Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            ) : (
-              <Card className="animate-fade-up shadow-soft">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-red-500 ml-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFileToDelete(file);
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Delete "{fileToDelete?.name}"?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this PDF? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setIsModalOpen(false)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteConfirmation}>
+                      Confirm Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+
+            {selectedFile && (
+              <Card className="animate-fade-up shadow-soft mt-6">
                 <CardHeader>
                   <CardTitle>{selectedFile.name}</CardTitle>
                 </CardHeader>
