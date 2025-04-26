@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Trash2, BookOpen } from "lucide-react";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { VoiceControls } from "@/components/VoiceControls";
+import { TextSummary } from "@/components/TextSummary";
+import { generateSummary } from "@/utils/summarizer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface UploadedFile {
   id: string;
@@ -37,6 +40,9 @@ const Index = () => {
   const [selectedVoice, setSelectedVoice] = useState<string>("");
   const [fileToDelete, setFileToDelete] = useState<UploadedFile | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [activeTab, setActiveTab] = useState("content");
 
   const abortController = useRef(new AbortController());
 
@@ -164,6 +170,7 @@ const Index = () => {
       setSelectedFile(file);
       toast.loading("Extracting text from PDF...");
       setIsLoading(true);
+      setSummary(null);
 
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
@@ -177,16 +184,6 @@ const Index = () => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = fileName;
-
-      // Fetch the user object
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-
-      // if (userError || !userData) {
-      //   toast.error("User not authenticated. Please log in.");
-      //   return; // Exit early if the user is not authenticated
-      // }
-
-      
 
       const { data: storageData, error: storageError } = await supabase.storage
         .from('newspapers')
@@ -202,7 +199,7 @@ const Index = () => {
         .from('newspapers')
         .getPublicUrl(filePath);
 
-        const { data: dbData, error: dbError } = await supabase
+      const { data: dbData, error: dbError } = await supabase
         .from('newspapers')
         .insert({
           title: file.name,
@@ -210,8 +207,6 @@ const Index = () => {
           pdf_url: publicUrl
         })
         .select();
-      
-
 
       if (dbError) {
         console.error("Database error:", dbError);
@@ -233,7 +228,6 @@ const Index = () => {
       toast.dismiss();
     }
   };
-
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -305,6 +299,7 @@ const Index = () => {
 
       setSelectedFile({ name: data.title } as File);
       setExtractedText(data.extracted_text || '');
+      setSummary(null);
 
       toast.success("Document loaded successfully!");
 
@@ -319,6 +314,30 @@ const Index = () => {
     } finally {
       toast.dismiss();
     }
+  };
+
+  const handleSummarize = async () => {
+    if (!extractedText || extractedText.trim().length < 100) {
+      toast.warning("Not enough text to summarize");
+      return;
+    }
+
+    setIsSummarizing(true);
+    try {
+      const result = await generateSummary(extractedText);
+      setSummary(result);
+      toast.success("Summary generated successfully");
+      setActiveTab("summary");
+    } catch (error) {
+      console.error("Summarization error:", error);
+      toast.error("Failed to generate summary");
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
   };
 
   return (
@@ -345,16 +364,19 @@ const Index = () => {
                 <FileUpload onFileSelect={handleFileSelect} />
 
                 {uploadedFiles.length > 0 && (
-                  <div className="mt-8">
+                  <div className="mt-8 animate-fade-in">
                     <h2 className="text-xl font-semibold mb-4">Previously Uploaded Documents</h2>
                     <div className="grid gap-4 md:grid-cols-2">
                       {uploadedFiles.map((file) => (
-                        <Card key={file.id} className="group relative">
+                        <Card key={file.id} className="group relative card-hover">
                           <CardContent
                             className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
                             onClick={() => handleLoadSaved(file.id, true)}
                           >
-                            <p className="truncate">{file.name}</p>
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="w-4 h-4 text-brand-purple" />
+                              <p className="truncate">{file.name}</p>
+                            </div>
 
                             <Button
                               size="icon"
@@ -395,7 +417,7 @@ const Index = () => {
                 </AlertDialog>
               </div>
             ) : (
-              <Card>
+              <Card className="animate-fade-up shadow-soft">
                 <CardHeader>
                   <CardTitle>{selectedFile.name}</CardTitle>
                 </CardHeader>
@@ -404,16 +426,35 @@ const Index = () => {
                     <p className="text-muted-foreground">
                       Your PDF has been processed. Use the controls below to listen to the text.
                     </p>
-                    <div className="max-h-96 overflow-y-auto p-4 bg-muted/50 rounded border">
-                      {extractedText ? (
-                        <div className="whitespace-pre-line">{extractedText}</div>
-                      ) : (
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>No text could be extracted from this PDF.</AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
+
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="content">PDF Content</TabsTrigger>
+                        <TabsTrigger value="summary">AI Summary</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="content">
+                        <div className="max-h-96 overflow-y-auto p-4 bg-muted/50 rounded border">
+                          {extractedText ? (
+                            <div className="whitespace-pre-line">{extractedText}</div>
+                          ) : (
+                            <Alert>
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription>No text could be extracted from this PDF.</AlertDescription>
+                            </Alert>
+                          )}
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="summary">
+                        <TextSummary 
+                          originalText={extractedText}
+                          onSummarize={handleSummarize}
+                          summary={summary}
+                          isLoading={isSummarizing}
+                        />
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 </CardContent>
               </Card>
