@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/button";
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
   resetFileState?: () => void;
+  showResetButton?: boolean;
 }
 
-export const FileUpload = ({ onFileSelect, resetFileState }: FileUploadProps) => {
+export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = false }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileWarning, setFileWarning] = useState<string | null>(null);
@@ -147,8 +148,8 @@ export const FileUpload = ({ onFileSelect, resetFileState }: FileUploadProps) =>
         </Alert>
       )}
 
-      {/* Add a reset button if resetFileState is provided */}
-      {resetFileState && (
+      {/* Add a reset button if resetFileState is provided and showResetButton is true */}
+      {resetFileState && showResetButton && (
         <div className="flex justify-center mt-4">
           <Button 
             variant="outline" 

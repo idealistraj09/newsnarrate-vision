@@ -43,6 +43,7 @@ const Index = () => {
   const [summary, setSummary] = useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
+  const [contentProcessed, setContentProcessed] = useState(false);
 
   const abortController = useRef(new AbortController());
 
@@ -87,10 +88,13 @@ const Index = () => {
   };
 
   const resetFileState = () => {
+    speechService.stop();
     setSelectedFile(null);
     setExtractedText("");
     setSummary(null);
     setIsLoading(false);
+    setContentProcessed(false);
+    setActiveTab("content");
   };
 
   const handleDeleteConfirmation = async () => {
@@ -177,6 +181,7 @@ const Index = () => {
       resetFileState(); // Reset previous file state
       toast.loading("Extracting text from PDF...");
       setIsLoading(true);
+      setSelectedFile(file); // Set the file immediately
 
       const text = await extractTextFromPDF(file);
       setExtractedText(text);
@@ -221,9 +226,7 @@ const Index = () => {
       }
 
       loadPreviousUploads();
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-      speechService.speak(text, speed, pitch);
+      setContentProcessed(true); // Mark content as processed
 
     } catch (error: any) {
       toast.dismiss();
@@ -232,6 +235,12 @@ const Index = () => {
     } finally {
       setIsLoading(false);
       toast.dismiss();
+    }
+  };
+
+  const handleStartSpeech = () => {
+    if (extractedText) {
+      speechService.speak(extractedText, speed, pitch);
     }
   };
 
@@ -291,7 +300,7 @@ const Index = () => {
     }
   };
 
-  const handleLoadSaved = async (id: string, shouldAutoPlay = true) => {
+  const handleLoadSaved = async (id: string, shouldAutoPlay = false) => {
     try {
       toast.loading("Loading saved document...");
       const { data, error } = await supabase
@@ -306,6 +315,7 @@ const Index = () => {
       setSelectedFile({ name: data.title } as File);
       setExtractedText(data.extracted_text || '');
       setSummary(null);
+      setContentProcessed(true);
 
       toast.success("Document loaded successfully!");
 
@@ -369,6 +379,7 @@ const Index = () => {
               <FileUpload 
                 onFileSelect={handleFileSelect} 
                 resetFileState={resetFileState}
+                showResetButton={contentProcessed}
               />
 
               {uploadedFiles.length > 0 && (
@@ -393,7 +404,7 @@ const Index = () => {
                       >
                         <CardContent
                           className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
-                          onClick={() => handleLoadSaved(file.id, true)}
+                          onClick={() => handleLoadSaved(file.id, false)}
                         >
                           <div className="flex items-center gap-2 w-full">
                             <BookOpen className="w-4 h-4 text-brand-purple flex-shrink-0" />
@@ -441,16 +452,27 @@ const Index = () => {
               </AlertDialog>
             </div>
 
-            {selectedFile && (
+            {selectedFile && contentProcessed && (
               <Card className="animate-fade-up shadow-soft mt-6">
                 <CardHeader>
                   <CardTitle>{selectedFile.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Your PDF has been processed. Use the controls below to listen to the text.
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-muted-foreground">
+                        Your PDF has been processed. Use the controls below to listen to the text.
+                      </p>
+                      <Button
+                        onClick={handleStartSpeech}
+                        variant="outline"
+                        size="sm"
+                        className="text-brand-purple hover:bg-brand-purple/10"
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Start Reading
+                      </Button>
+                    </div>
 
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                       <TabsList className="grid w-full grid-cols-2">

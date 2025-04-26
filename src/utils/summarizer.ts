@@ -1,28 +1,19 @@
 
+import { generateGeminiSummary } from "./geminiSummarizer";
+
 export async function generateSummary(text: string): Promise<string> {
-  // Define maximum chunk size to process
-  const MAX_CHUNK_SIZE = 4000; // Characters per chunk
-  const chunks = splitTextIntoChunks(text, MAX_CHUNK_SIZE);
-  
-  // For very long texts, we'll summarize each chunk separately and then combine
-  if (chunks.length > 1) {
-    console.log(`Text too long, splitting into ${chunks.length} chunks for summarization`);
-    const chunkSummaries = await Promise.all(
-      chunks.map(chunk => processTextWithAI(chunk))
-    );
-    
-    // If we have multiple chunk summaries, summarize them together
-    const combinedSummary = chunkSummaries.join("\n\n");
-    
-    if (combinedSummary.length > MAX_CHUNK_SIZE) {
-      return processTextWithAI(combinedSummary);
-    }
-    
-    return combinedSummary;
+  try {
+    // Attempt to use the Gemini API for summarization first
+    return await generateGeminiSummary(text);
+  } catch (error) {
+    console.error("Error in AI summarization:", error);
+    // Fall back to the extractive summarization if Gemini fails
+    return extractiveSummarization(text);
   }
-  
-  return processTextWithAI(text);
 }
+
+// Define maximum chunk size to process
+const MAX_CHUNK_SIZE = 4000; // Characters per chunk
 
 function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
   if (text.length <= maxChunkSize) {
@@ -51,22 +42,6 @@ function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
   }
   
   return chunks;
-}
-
-async function processTextWithAI(text: string): Promise<string> {
-  try {
-    // Use a simple algorithm for summarization if text is very short
-    if (text.length < 200) {
-      return text;
-    }
-
-    // Extract key sentences based on position and keywords
-    const summary = extractiveSummarization(text);
-    return summary;
-  } catch (error) {
-    console.error("Error in AI summarization:", error);
-    return "Failed to generate summary. Please try again later.";
-  }
 }
 
 function extractiveSummarization(text: string): string {
