@@ -1,4 +1,3 @@
-
 class SpeechService {
   private utterance: SpeechSynthesisUtterance | null = null;
   private onStateChange: ((isPlaying: boolean) => void) | null = null;
@@ -139,7 +138,11 @@ class SpeechService {
     };
 
     this.utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
+      if (event.error === 'interrupted') {
+        console.log('Speech synthesis was interrupted.');
+      } else {
+        console.error('Speech synthesis error:', event);
+      }
       this.onStateChange?.(false);
     };
 
@@ -167,10 +170,15 @@ class SpeechService {
   }
 
   stop() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      speechSynthesis.cancel();
-      this.currentPosition = 0;
-      this.onStateChange?.(false);
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        this.currentPosition = 0;
+        this.onStateChange?.(false);
+        console.log('Speech synthesis stopped successfully.');
+      }
+    } catch (error) {
+      console.error('Error stopping speech synthesis:', error);
     }
   }
 
@@ -183,6 +191,12 @@ class SpeechService {
   setPitch(pitch: number) {
     if (this.utterance) {
       this.utterance.pitch = pitch;
+    }
+  }
+
+  setVolume(volume: number) {
+    if (this.utterance) {
+      this.utterance.volume = volume;
     }
   }
 

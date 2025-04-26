@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { toast } from "sonner";
@@ -65,7 +64,7 @@ const Index = () => {
       }
 
       console.log("Fetched data:", data);
-      
+
       if (data) {
         const formattedData: UploadedFile[] = data.map(item => ({
           id: item.id,
@@ -83,74 +82,73 @@ const Index = () => {
 
   const handleDeleteConfirmation = async () => {
     speechService.stop(); // Stop any ongoing speech
-    
+  
     if (!fileToDelete) {
       setIsModalOpen(false);
       return;
     }
-    
+  
     try {
       console.log("Starting deletion for file ID:", fileToDelete.id);
-      
-      // Try with explicit error handling and verification
+  
+      // Delete from the database
       const { error: dbError, data: deletedData } = await supabase
         .from('newspapers')
         .delete()
         .eq('id', fileToDelete.id)
         .select();
-      
+  
       if (dbError) {
         console.error("Database deletion error:", dbError);
         throw dbError;
       }
-      
+  
       console.log("Database deletion response:", deletedData);
-      
-      // Verify deletion success
-      const { data: checkData } = await supabase
+  
+      // Verification: check if any record still exists
+      const { data: checkData, error: checkError } = await supabase
         .from('newspapers')
         .select('id')
         .eq('id', fileToDelete.id)
-        .single();
-        
-      if (checkData) {
-        console.error("Deletion verification failed - record still exists:", checkData);
+        .limit(1);
+  
+      if (checkError) {
+        console.error("Error verifying deletion:", checkError);
+        throw checkError;
+      }
+  
+      if (checkData && checkData.length > 0) {
+        console.error("❌ Deletion verification failed - record still exists:", checkData);
         throw new Error("Failed to delete record from database");
       }
-      
-      console.log("Deletion verification passed - record no longer exists in database");
-      
-      // Step 2: Extract the file path from the URL
+  
+      console.log("✅ Deletion verification passed - record no longer exists");
+  
+      // Extract the file name from the URL
       const urlParts = fileToDelete.pdf_url.split('/');
       const fileName = urlParts[urlParts.length - 1];
-      const bucketName = 'newspapers';
-      
-      console.log("Attempting to delete storage file:", fileName);
-      
-      // Step 3: Only attempt to delete from storage if we have a valid file name
-      if (fileName) {
-        const { error: storageError } = await supabase.storage
-          .from(bucketName)
-          .remove([fileName]);
-        
-        if (storageError) {
-          console.error("Storage deletion error:", storageError);
-          toast.warning("File deleted from database but storage cleanup failed");
-        } else {
-          console.log("Storage file deleted successfully");
-        }
+  
+      // Delete from Supabase storage
+      const { error: storageError } = await supabase.storage
+        .from('newspapers')
+        .remove([fileName]);
+  
+      if (storageError) {
+        console.warn("Storage deletion error:", storageError);
+        toast.warning("File deleted from database but storage cleanup failed");
+      } else {
+        console.log("✅ Storage file deleted successfully");
       }
-      
-      // Step 4: Update local state to remove the file from the list
+  
+      // Update local state to remove the file from the list
       setUploadedFiles(prev => prev.filter(file => file.id !== fileToDelete.id));
-      
-      // Reset any active file if it was the one being deleted
-      if (selectedFile && typeof selectedFile === 'object' && 'name' in selectedFile && 
-          selectedFile.name === fileToDelete.name) {
+  
+      // Reset file view if the deleted file is active
+      if (selectedFile && 'name' in selectedFile && selectedFile.name === fileToDelete.name) {
         setSelectedFile(null);
         setExtractedText("");
       }
-      
+  
       toast.success("File deleted successfully");
     } catch (err) {
       console.error("Error in deletion process:", err);
@@ -180,6 +178,16 @@ const Index = () => {
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = fileName;
 
+      // Fetch the user object
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+
+      // if (userError || !userData) {
+      //   toast.error("User not authenticated. Please log in.");
+      //   return; // Exit early if the user is not authenticated
+      // }
+
+      
+
       const { data: storageData, error: storageError } = await supabase.storage
         .from('newspapers')
         .upload(filePath, file);
@@ -194,7 +202,7 @@ const Index = () => {
         .from('newspapers')
         .getPublicUrl(filePath);
 
-      const { data: dbData, error: dbError } = await supabase
+        const { data: dbData, error: dbError } = await supabase
         .from('newspapers')
         .insert({
           title: file.name,
@@ -202,6 +210,8 @@ const Index = () => {
           pdf_url: publicUrl
         })
         .select();
+      
+
 
       if (dbError) {
         console.error("Database error:", dbError);
@@ -223,6 +233,7 @@ const Index = () => {
       toast.dismiss();
     }
   };
+
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -311,113 +322,117 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen pb-24 page-transition">
-      <div className="container max-w-4xl mx-auto py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">PDF Voice Reader</h1>
-          <p className="text-lg text-muted-foreground">
-            Upload your PDF and listen to it read aloud with clean, natural voice
-          </p>
-        </div>
+    <div className="flex">
+      <div className="flex-1 relative">
+        <div className="min-h-screen pb-24 page-transition">
+          <div className="container max-w-4xl mx-auto py-12">
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-bold mb-4">PDF Voice Reader</h1>
+              <p className="text-lg text-muted-foreground">
+                Upload your PDF and listen to it read aloud with clean, natural voice
+              </p>
+            </div>
 
-        {isLoading && (
-          <div className="text-center my-8">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-2">Processing PDF, please wait...</p>
-          </div>
-        )}
-
-        {!selectedFile ? (
-          <div className="space-y-6">
-            <FileUpload onFileSelect={handleFileSelect} />
-
-            {uploadedFiles.length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-xl font-semibold mb-4">Previously Uploaded Documents</h2>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {uploadedFiles.map((file) => (
-                    <Card key={file.id} className="group relative">
-                      <CardContent
-                        className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
-                        onClick={() => handleLoadSaved(file.id, true)}
-                      >
-                        <p className="truncate">{file.name}</p>
-
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-red-500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFileToDelete(file);
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+            {isLoading && (
+              <div className="text-center my-8">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                <p className="mt-2">Processing PDF, please wait...</p>
               </div>
             )}
 
-            <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Delete "{fileToDelete?.name}"?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this PDF? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setIsModalOpen(false)}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteConfirmation}>
-                    Confirm Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>{selectedFile.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Your PDF has been processed. Use the controls below to listen to the text.
-                </p>
-                <div className="max-h-96 overflow-y-auto p-4 bg-muted/50 rounded border">
-                  {extractedText ? (
-                    <div className="whitespace-pre-line">{extractedText}</div>
-                  ) : (
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>No text could be extracted from this PDF.</AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            {!selectedFile ? (
+              <div className="space-y-6">
+                <FileUpload onFileSelect={handleFileSelect} />
 
-      <VoiceControls
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        onSkipBack={handleSkipBack}
-        onSkipForward={handleSkipForward}
-        onSpeedChange={handleSpeedChange}
-        onPitchChange={handlePitchChange}
-        onVoiceChange={handleVoiceChange}
-        speed={speed}
-        pitch={pitch}
-      />
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-8">
+                    <h2 className="text-xl font-semibold mb-4">Previously Uploaded Documents</h2>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {uploadedFiles.map((file) => (
+                        <Card key={file.id} className="group relative">
+                          <CardContent
+                            className="p-4 flex justify-between items-center cursor-pointer hover:bg-accent/50 transition-colors"
+                            onClick={() => handleLoadSaved(file.id, true)}
+                          >
+                            <p className="truncate">{file.name}</p>
+
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-red-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFileToDelete(file);
+                                setIsModalOpen(true);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Delete "{fileToDelete?.name}"?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this PDF? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setIsModalOpen(false)}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteConfirmation}>
+                        Confirm Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{selectedFile.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground">
+                      Your PDF has been processed. Use the controls below to listen to the text.
+                    </p>
+                    <div className="max-h-96 overflow-y-auto p-4 bg-muted/50 rounded border">
+                      {extractedText ? (
+                        <div className="whitespace-pre-line">{extractedText}</div>
+                      ) : (
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>No text could be extracted from this PDF.</AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <VoiceControls
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onSkipBack={handleSkipBack}
+            onSkipForward={handleSkipForward}
+            onSpeedChange={handleSpeedChange}
+            onPitchChange={handlePitchChange}
+            onVoiceChange={handleVoiceChange}
+            speed={speed}
+            pitch={pitch}
+          />
+        </div>
+      </div>
     </div>
   );
 };
