@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Trash2, BookOpen, RotateCw } from "lucide-react";
+import { AlertCircle, Trash2, BookOpen, RotateCw, Upload } from "lucide-react";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
 import { Button } from "@/components/ui/button";
 import {

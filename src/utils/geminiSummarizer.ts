@@ -1,8 +1,7 @@
-
 import { generateSummary } from './summarizer';
 
 // Environment variable for API key
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const API_KEY = 'AIzaSyAdonQ7MXhZmToca53KX0jXwq9g3rR3FCk';
 
 /**
  * Generate a summary of the text using the Gemini API
@@ -85,11 +84,11 @@ function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
  */
 async function summarizeWithGemini(text: string): Promise<string> {
   try {
-    const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent', {
+    console.log("Text being sent to Gemini API:", text);
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAdonQ7MXhZmToca53KX0jXwq9g3rR3FCk', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': API_KEY
       },
       body: JSON.stringify({
         contents: [
