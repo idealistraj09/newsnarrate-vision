@@ -66,7 +66,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
             <TabsTrigger value="read">Read</TabsTrigger>
             <TabsTrigger value="listen">Listen</TabsTrigger>
           </TabsList>
-          <TabsContent value="read" className="h-full">
+          <TabsContent value="read" className="min-h-[200px]">
             <div className="space-y-3">
               <p className="text-sm text-foreground/90">{displayDescription}</p>
               
@@ -90,7 +90,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
               )}
             </div>
           </TabsContent>
-          <TabsContent value="listen" className="h-full flex items-center">
+          <TabsContent value="listen" className="min-h-[200px] flex items-center">
             <div className="flex justify-center w-full">
               <Button
                 onClick={() => handlePlayPause(article.title + ". " + article.description)}

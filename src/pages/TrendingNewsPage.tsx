@@ -5,7 +5,6 @@ import { Loader2 } from 'lucide-react';
 import NewsHeader from '../components/NewsHeader';
 import NewsCard from '../components/NewsCard';
 import { fetchNewsArticles } from '../utils/newsService';
-import VoiceCommandPanel from '../components/VoiceCommandPanel';
 
 const categories = ['All', 'Politics', 'Sports', 'Technology', 'Entertainment', 'Science', 'Health', 'Business', 'World'];
 
@@ -44,7 +43,7 @@ const TrendingNewsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95 pb-20">
       <NewsHeader 
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
@@ -78,8 +77,6 @@ const TrendingNewsPage: React.FC = () => {
           </div>
         )}
       </main>
-      
-      <VoiceCommandPanel />
     </div>
   );
 };

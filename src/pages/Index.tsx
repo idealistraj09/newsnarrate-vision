@@ -22,7 +22,6 @@ import { VoiceControls } from "@/components/VoiceControls";
 import { TextSummary } from "@/components/TextSummary";
 import { generateSummary } from "@/utils/summarizer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import VoiceCommandPanel from "@/components/VoiceCommandPanel";
 
 interface UploadedFile {
   id: string;
@@ -538,8 +537,6 @@ const Index = () => {
             speed={speed}
             pitch={pitch}
           />
-          
-          <VoiceCommandPanel />
         </div>
       </div>
     </div>

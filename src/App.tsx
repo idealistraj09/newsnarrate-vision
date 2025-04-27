@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage';
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TrendingNewsPage from './pages/TrendingNewsPage';
+import VoiceCommandPanel from './components/VoiceCommandPanel';
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App: React.FC = () => {
               <Route path="/trending-news" element={<TrendingNewsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <VoiceCommandPanel />
           </div>
         </Router>
       </TooltipProvider>
