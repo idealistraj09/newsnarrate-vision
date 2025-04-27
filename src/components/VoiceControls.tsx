@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause } from "lucide-react";
+import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause, Globe } from "lucide-react";
 import { 
   Select, 
   SelectContent, 
@@ -17,6 +17,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { speechService } from "@/utils/speech";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem
+} from "@/components/ui/dropdown-menu";
 
 interface VoiceControlsProps {
   isPlaying: boolean;
@@ -26,8 +32,10 @@ interface VoiceControlsProps {
   onSpeedChange: (value: number) => void;
   onPitchChange: (value: number) => void;
   onVoiceChange?: (voiceName: string) => void;
+  onLanguageChange?: (language: string) => void;
   speed: number;
   pitch: number;
+  language?: string;
 }
 
 export const VoiceControls = ({
@@ -38,33 +46,52 @@ export const VoiceControls = ({
   onSpeedChange,
   onPitchChange,
   onVoiceChange,
+  onLanguageChange,
   speed,
   pitch,
+  language = 'en-US'
 }: VoiceControlsProps) => {
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [availableLanguages, setAvailableLanguages] = useState<{code: string, name: string}[]>([]);
   
   useEffect(() => {
     // Get available voices
     const voices = speechService.getVoices();
     if (voices.length > 0) {
-      setAvailableVoices(voices.filter(voice => voice.lang.includes('en')));
+      setAvailableVoices(voices.filter(voice => voice.lang.includes(language.split('-')[0])));
     } else {
       // If voices aren't loaded yet, set up a listener for when they are
       const checkVoices = () => {
         const newVoices = speechService.getVoices();
         if (newVoices.length > 0) {
-          setAvailableVoices(newVoices.filter(voice => voice.lang.includes('en')));
+          setAvailableVoices(newVoices.filter(voice => voice.lang.includes(language.split('-')[0])));
           window.removeEventListener('voiceschanged', checkVoices);
         }
       };
       window.addEventListener('voiceschanged', checkVoices);
       return () => window.removeEventListener('voiceschanged', checkVoices);
     }
-  }, []);
+    
+    // Get available languages
+    if (typeof speechSynthesis !== 'undefined') {
+      const languages = speechService.getAvailableLanguages();
+      setAvailableLanguages(languages);
+    }
+  }, [language]);
 
   const handleVoiceChange = (voiceName: string) => {
     if (onVoiceChange) {
       onVoiceChange(voiceName);
+    }
+  };
+  
+  const handleLanguageChange = (langCode: string) => {
+    if (onLanguageChange) {
+      onLanguageChange(langCode);
+      
+      // Update available voices for this language
+      const voices = speechService.getVoices();
+      setAvailableVoices(voices.filter(voice => voice.lang.includes(langCode.split('-')[0])));
     }
   };
 
@@ -105,7 +132,7 @@ export const VoiceControls = ({
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <TooltipProvider>
               <div>
                 <label className="text-sm font-medium mb-2 block">Speed: {speed.toFixed(1)}x</label>
@@ -149,13 +176,35 @@ export const VoiceControls = ({
             </TooltipProvider>
 
             <div>
+              <label className="text-sm font-medium mb-2 block">Language</label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full flex justify-between items-center">
+                    <Globe className="h-4 w-4 mr-2" />
+                    <span>{availableLanguages.find(lang => lang.code === language)?.name || 'English'}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto">
+                  {availableLanguages.map((lang) => (
+                    <DropdownMenuItem 
+                      key={lang.code}
+                      onClick={() => handleLanguageChange(lang.code)}
+                    >
+                      {lang.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div>
               <label className="text-sm font-medium mb-2 block">Voice</label>
               {availableVoices.length > 0 ? (
                 <Select onValueChange={handleVoiceChange}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select voice" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60">
                     {availableVoices.map((voice) => (
                       <SelectItem key={voice.name} value={voice.name}>
                         {voice.name}

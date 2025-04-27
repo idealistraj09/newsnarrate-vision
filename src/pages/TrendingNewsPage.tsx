@@ -5,15 +5,17 @@ import { Loader2 } from 'lucide-react';
 import NewsHeader from '../components/NewsHeader';
 import NewsCard from '../components/NewsCard';
 import { fetchNewsArticles } from '../utils/newsService';
+import VoiceCommandPanel from '../components/VoiceCommandPanel';
 
-const categories = ['All', 'Politics', 'Sports', 'Technology', 'Entertainment', 'Science', 'Health'];
+const categories = ['All', 'Politics', 'Sports', 'Technology', 'Entertainment', 'Science', 'Health', 'Business', 'World'];
 
 const TrendingNewsPage: React.FC = () => {
   const [articles, setArticles] = useState<any[]>([]);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [loading, setLoading] = useState<boolean>(false);
-
+  const [currentLanguage, setCurrentLanguage] = useState<string>('en-US');
+  
   useEffect(() => {
     fetchNews(selectedCategory);
     
@@ -36,12 +38,19 @@ const TrendingNewsPage: React.FC = () => {
     }
   };
 
+  const handleLanguageChange = (language: string) => {
+    setCurrentLanguage(language);
+    speechService.setLanguage(language);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
       <NewsHeader 
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
         categories={categories}
+        currentLanguage={currentLanguage}
+        onLanguageChange={handleLanguageChange}
       />
 
       <main className="container mx-auto px-4 py-12">
@@ -55,7 +64,7 @@ const TrendingNewsPage: React.FC = () => {
             <p className="text-muted-foreground">No articles found. Try another category.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {articles.map((article, index) => (
               <NewsCard
                 key={index}
@@ -63,11 +72,14 @@ const TrendingNewsPage: React.FC = () => {
                 index={index}
                 playingIndex={playingIndex}
                 setPlayingIndex={setPlayingIndex}
+                language={currentLanguage}
               />
             ))}
           </div>
         )}
       </main>
+      
+      <VoiceCommandPanel />
     </div>
   );
 };

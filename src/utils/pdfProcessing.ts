@@ -1,30 +1,85 @@
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-import workerSrc from "pdfjs-dist/build/pdf.worker.mjs?url"; // <-- this is the key
 
-// Set the worker source for pdf.js
-GlobalWorkerOptions.workerSrc = workerSrc;
+import * as pdfjs from 'pdfjs-dist';
 
-export async function estimatePDFPageCount(data: ArrayBuffer): Promise<number> {
-  const pdf = await getDocument({ data }).promise;
-  return pdf.numPages;
-}
+// Make sure to use the worker
+const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-export async function extractTextFromPDF(file: File, maxPages = 3): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const pdf = await getDocument({ data: buffer }).promise;
+const MAX_PDF_SIZE_MB = 30; // Increased to 30MB
 
-  let text = "";
-  for (let i = 1; i <= Math.min(pdf.numPages, maxPages); i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const pageText = content.items.map((item: any) => item.str).join(" ");
-    text += pageText + "\n";
+// Function to extract text from PDF file
+export const extractTextFromPDF = async (file: File): Promise<string> => {
+  // Check file size
+  if (file.size > MAX_PDF_SIZE_MB * 1024 * 1024) {
+    throw new Error(`PDF file size exceeds ${MAX_PDF_SIZE_MB}MB limit`);
   }
 
-  return text.trim();
-}
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const arrayBuffer = event.target?.result as ArrayBuffer;
+        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+        
+        let fullText = '';
+        
+        // Process in batches to avoid memory issues
+        const BATCH_SIZE = 10;
+        for (let i = 1; i <= pdf.numPages; i += BATCH_SIZE) {
+          const batchPromises = [];
+          for (let j = i; j <= Math.min(i + BATCH_SIZE - 1, pdf.numPages); j++) {
+            batchPromises.push(processPage(pdf, j));
+          }
+          
+          const batchResults = await Promise.all(batchPromises);
+          fullText += batchResults.join(' ');
+          
+          // Small delay to allow garbage collection
+          if (i + BATCH_SIZE <= pdf.numPages) {
+            await new Promise(r => setTimeout(r, 100));
+          }
+        }
+        
+        resolve(fullText);
+      } catch (error) {
+        console.error('Error extracting text:', error);
+        reject(error);
+      }
+    };
+    
+    reader.onerror = (error) => {
+      reject(error);
+    };
+    
+    reader.readAsArrayBuffer(file);
+  });
+};
 
-export async function hasPDFExtractableText(file: File): Promise<boolean> {
-  const text = await extractTextFromPDF(file);
-  return text.length > 50;
+async function processPage(pdf: pdfjs.PDFDocumentProxy, pageNumber: number): Promise<string> {
+  const page = await pdf.getPage(pageNumber);
+  const content = await page.getTextContent();
+  
+  // Extract text and maintain some formatting
+  let lastY = -1;
+  let text = '';
+  
+  for (const item of content.items) {
+    if ('str' in item) {
+      // Check if this is a new line based on y position
+      const y = (item as any).transform[5]; // y-coordinate
+      if (lastY !== -1 && Math.abs(y - lastY) > 5) {
+        // If y position changed significantly, add a newline
+        text += '\n';
+      } else if (text.length > 0 && !text.endsWith(' ') && !text.endsWith('\n')) {
+        // Add space between items on the same line
+        text += ' ';
+      }
+      
+      text += item.str;
+      lastY = y;
+    }
+  }
+  
+  // Add page separator
+  return `${text}\n\n`;
 }

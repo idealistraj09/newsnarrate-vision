@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Play, Pause, Volume2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Pause, Volume2, ArrowDown, ArrowUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -15,27 +15,42 @@ interface NewsCardProps {
   index: number;
   playingIndex: number | null;
   setPlayingIndex: (index: number | null) => void;
+  language?: string;
 }
 
-const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPlayingIndex }) => {
+const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPlayingIndex, language = 'en-US' }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isPlaying = playingIndex === index;
+  
   const handlePlayPause = (text: string) => {
-    if (playingIndex === index) {
+    if (isPlaying) {
       speechService.stop();
       setPlayingIndex(null);
     } else {
       if (playingIndex !== null) {
         speechService.stop();
       }
+      if (language) {
+        speechService.setLanguage(language);
+      }
       speechService.speak(text);
       setPlayingIndex(index);
     }
   };
 
-  const isPlaying = playingIndex === index;
+  const toggleExpand = () => {
+    setExpanded(!expanded);
+  };
+
+  // Check if description is long enough to need expansion
+  const isLongDescription = article.description.length > 300;
+  const displayDescription = expanded || !isLongDescription 
+    ? article.description 
+    : article.description.substring(0, 300) + '...';
 
   return (
     <Card 
-      className="overflow-hidden animate-fade-up hover:shadow-lg transition-all duration-300 border-border/40 hover:border-brand-purple/40" 
+      className="overflow-hidden animate-fade-up hover:shadow-lg transition-all duration-300 border-border/40 hover:border-brand-purple/40 h-full flex flex-col" 
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       <CardHeader className="pb-2 border-b">
@@ -45,19 +60,40 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
           {article.source}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pt-4">
-        <Tabs defaultValue="read" className="w-full">
+      <CardContent className="pt-4 flex-grow">
+        <Tabs defaultValue="read" className="w-full h-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="read">Read</TabsTrigger>
             <TabsTrigger value="listen">Listen</TabsTrigger>
           </TabsList>
-          <TabsContent value="read">
-            <p className="text-sm text-foreground/90 line-clamp-4">{article.description}</p>
+          <TabsContent value="read" className="h-full">
+            <div className="space-y-3">
+              <p className="text-sm text-foreground/90">{displayDescription}</p>
+              
+              {isLongDescription && (
+                <Button
+                  variant="ghost" 
+                  size="sm"
+                  onClick={toggleExpand}
+                  className="flex items-center gap-1 text-xs text-muted-foreground"
+                >
+                  {expanded ? (
+                    <>
+                      <ArrowUp className="h-3 w-3" /> Show less
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDown className="h-3 w-3" /> Read more
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </TabsContent>
-          <TabsContent value="listen">
-            <div className="flex justify-center">
+          <TabsContent value="listen" className="h-full flex items-center">
+            <div className="flex justify-center w-full">
               <Button
-                onClick={() => handlePlayPause(article.description || article.title)}
+                onClick={() => handlePlayPause(article.title + ". " + article.description)}
                 className={`w-full ${isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-purple hover:bg-brand-purple/90'}`}
               >
                 {isPlaying ? (

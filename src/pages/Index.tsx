@@ -22,6 +22,7 @@ import { VoiceControls } from "@/components/VoiceControls";
 import { TextSummary } from "@/components/TextSummary";
 import { generateSummary } from "@/utils/summarizer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import VoiceCommandPanel from "@/components/VoiceCommandPanel";
 
 interface UploadedFile {
   id: string;
@@ -44,12 +45,14 @@ const Index = () => {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
   const [contentProcessed, setContentProcessed] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState('en-US');
 
   const abortController = useRef(new AbortController());
 
   useEffect(() => {
     loadPreviousUploads();
     speechService.setStateChangeCallback(setIsPlaying);
+    
     return () => {
       abortController.current.abort();
       speechService.stop();
@@ -183,7 +186,10 @@ const Index = () => {
       setIsLoading(true);
       setSelectedFile(file); // Set the file immediately
 
+      console.log("Processing PDF file:", file.name, "Size:", (file.size / (1024 * 1024)).toFixed(2) + "MB");
+      
       const text = await extractTextFromPDF(file);
+      console.log("Text extracted, length:", text.length, "characters");
       setExtractedText(text);
 
       if (text.trim().length < 50) {
@@ -240,6 +246,7 @@ const Index = () => {
 
   const handleStartSpeech = () => {
     if (extractedText) {
+      speechService.setLanguage(currentLanguage);
       speechService.speak(extractedText, speed, pitch);
     }
   };
@@ -292,6 +299,18 @@ const Index = () => {
     setSelectedVoice(voiceName);
     speechService.setVoice(voiceName);
 
+    if (isPlaying && extractedText) {
+      speechService.stop();
+      setTimeout(() => {
+        speechService.speak(extractedText, speed, pitch);
+      }, 100);
+    }
+  };
+
+  const handleLanguageChange = (language: string) => {
+    setCurrentLanguage(language);
+    speechService.setLanguage(language);
+    
     if (isPlaying && extractedText) {
       speechService.stop();
       setTimeout(() => {
@@ -519,6 +538,8 @@ const Index = () => {
             speed={speed}
             pitch={pitch}
           />
+          
+          <VoiceCommandPanel />
         </div>
       </div>
     </div>
