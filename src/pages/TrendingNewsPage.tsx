@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { speechService } from '../utils/speech';
-import { Home, Play, Pause, Filter, Loader2 } from 'lucide-react';
+import { Home, Play, Pause, Filter, Loader2, Volume2, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const categories = ['All', 'Politics', 'Sports', 'Technology', 'Entertainment', 'Science', 'Health'];
 
@@ -95,11 +97,18 @@ const TrendingNewsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-gradient-to-r from-brand-purple to-brand-blue py-8 animate-fade-in">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold text-white">Trending News</h1>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+      <header className="bg-gradient-to-r from-brand-purple to-brand-blue py-12 relative overflow-hidden animate-fade-in">
+        <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="flex justify-between items-center mb-6">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold text-white flex items-center gap-3">
+                <Newspaper className="w-8 h-8" />
+                Trending News
+              </h1>
+              <p className="text-lg text-white/80">Stay updated with the latest news from around the world</p>
+            </div>
             <Button 
               variant="outline" 
               onClick={() => navigate('/')}
@@ -109,9 +118,8 @@ const TrendingNewsPage: React.FC = () => {
               Home
             </Button>
           </div>
-          <p className="text-white/80 mb-6">Stay updated with the latest news from around the world</p>
           
-          <div className="flex items-center overflow-x-auto pb-2 gap-2">
+          <div className="flex items-center overflow-x-auto pb-2 gap-2 mt-8">
             <Filter className="text-white/70 mr-2" />
             {categories.map(category => (
               <Button
@@ -120,10 +128,10 @@ const TrendingNewsPage: React.FC = () => {
                 variant={selectedCategory === category ? "default" : "outline"}
                 size="sm"
                 className={`
-                  whitespace-nowrap
+                  whitespace-nowrap transition-all duration-300
                   ${selectedCategory === category 
-                    ? 'bg-white text-brand-purple border-white' 
-                    : 'bg-white/20 text-white border-white/30 hover:bg-white/30'}
+                    ? 'bg-white text-brand-purple border-white scale-105' 
+                    : 'bg-white/20 text-white border-white/30 hover:bg-white/30 hover:scale-105'}
                 `}
               >
                 {category}
@@ -133,7 +141,7 @@ const TrendingNewsPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-12">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-10 w-10 text-brand-purple animate-spin mb-4" />
@@ -146,32 +154,49 @@ const TrendingNewsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((article, index) => (
-              <Card key={index} className="overflow-hidden animate-fade-up card-hover shadow-soft" style={{ animationDelay: `${index * 0.1}s` }}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="line-clamp-2">{article.title}</CardTitle>
-                  <CardDescription>Source: {article.source}</CardDescription>
+              <Card 
+                key={index} 
+                className="overflow-hidden animate-fade-up hover:shadow-lg transition-all duration-300 border-border/40 hover:border-brand-purple/40" 
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <CardHeader className="pb-2 border-b">
+                  <CardTitle className="line-clamp-2 text-xl">{article.title}</CardTitle>
+                  <CardDescription className="flex items-center gap-2">
+                    <Volume2 className="w-4 h-4" />
+                    {article.source}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="pb-2">
-                  <p className="text-sm text-gray-600 line-clamp-4">{article.description}</p>
+                <CardContent className="pt-4">
+                  <Tabs defaultValue="read" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                      <TabsTrigger value="read">Read</TabsTrigger>
+                      <TabsTrigger value="listen">Listen</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="read">
+                      <p className="text-sm text-foreground/90 line-clamp-4">{article.description}</p>
+                    </TabsContent>
+                    <TabsContent value="listen">
+                      <div className="flex justify-center">
+                        <Button
+                          onClick={() => handlePlayPause(index, article.description || article.title)}
+                          className={`w-full ${playingIndex === index ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-purple hover:bg-brand-purple/90'}`}
+                        >
+                          {playingIndex === index ? (
+                            <>
+                              <Pause className="mr-2 h-4 w-4" />
+                              Pause
+                            </>
+                          ) : (
+                            <>
+                              <Play className="mr-2 h-4 w-4" />
+                              Listen Now
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
-                <CardFooter>
-                  <Button
-                    onClick={() => handlePlayPause(index, article.description || article.title)}
-                    className={`w-full ${playingIndex === index ? 'bg-red-500 hover:bg-red-600' : 'button-gradient'}`}
-                  >
-                    {playingIndex === index ? (
-                      <>
-                        <Pause className="mr-2 h-4 w-4" />
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-2 h-4 w-4" />
-                        Play
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
               </Card>
             ))}
           </div>

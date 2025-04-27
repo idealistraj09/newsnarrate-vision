@@ -95,7 +95,17 @@ async function summarizeWithGemini(text: string): Promise<string> {
           {
             parts: [
               {
-                text: `Please provide a concise summary of the following text. Extract the most important information and main points:
+                text: `You are an expert academic writer and technical communicator. Summarize the following extracted text from a PDF into a well-organized, easily understandable, and reader-friendly format.
+
+Ensure the summary:
+- Captures the key ideas and main points clearly
+- Avoids copying large blocks of text directly; paraphrase naturally
+- Divides the content into logical sections or bullet points if needed
+- Maintains the original meaning without adding new information
+- Uses professional, simple, and engaging language suitable for a report or academic document
+- Fixes any grammar or formatting issues present in the raw extracted text
+
+The text to summarize is:
 
 ${text}
 
@@ -105,7 +115,7 @@ Summary:`
           }
         ],
         generationConfig: {
-          temperature: 0.2,
+          temperature: 0.3, // Slightly reduced for more focused output
           maxOutputTokens: 1024,
           topK: 40,
           topP: 0.95

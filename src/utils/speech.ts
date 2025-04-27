@@ -18,13 +18,33 @@ class SpeechService {
       // Check if voices are already loaded
       const availableVoices = speechSynthesis.getVoices();
       if (availableVoices.length > 0) {
-        this.voices = availableVoices;
+        // Filter for high-quality voices and prioritize them
+        this.voices = this.filterAndPrioritizeVoices(availableVoices);
         this.isInitialized = true;
-        console.log("Speech synthesis initialized with", availableVoices.length, "voices");
+        console.log("Speech synthesis initialized with", this.voices.length, "voices");
       }
     } else {
       console.warn("Speech synthesis not supported in this browser");
     }
+  }
+
+  private filterAndPrioritizeVoices(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] {
+    // Prioritize premium/enhanced voices
+    const premiumVoices = voices.filter(voice => 
+      voice.name.toLowerCase().includes('premium') || 
+      voice.name.toLowerCase().includes('enhanced') ||
+      voice.name.toLowerCase().includes('neural')
+    );
+
+    // Then natural-sounding English voices
+    const naturalVoices = voices.filter(voice => 
+      voice.lang.includes('en') && 
+      !voice.name.toLowerCase().includes('premium') &&
+      !voice.name.toLowerCase().includes('enhanced') &&
+      !voice.name.toLowerCase().includes('neural')
+    );
+
+    return [...premiumVoices, ...naturalVoices];
   }
 
   private setupVoiceChangeListener() {
@@ -65,15 +85,15 @@ class SpeechService {
     this.speakCurrentChunk(speed, pitch);
   }
 
-  // Preprocess text to improve speech quality
   private preprocessText(text: string): string {
-    // Fix common pronunciation issues
     return text
-      .replace(/(\d+)\.(\d+)/g, "$1 point $2") // Convert decimals to "point"
-      .replace(/&/g, " and ")                  // Replace & with "and"
-      .replace(/(\w)-(\w)/g, "$1 $2")          // Add space between hyphenated words
-      .replace(/([.!?])\s+/g, "$1\n\n")        // Add paragraph breaks after sentences
-      .replace(/([A-Z][a-z]+)\s+([A-Z])/g, "$1.\n$2") // Add breaks between sentences without punctuation
+      .replace(/(\d+)\.(\d+)/g, "$1 point $2")
+      .replace(/&/g, " and ")
+      .replace(/(\w)-(\w)/g, "$1 $2")
+      .replace(/([.!?])\s+/g, "$1\n\n")
+      .replace(/([A-Z][a-z]+)\s+([A-Z])/g, "$1.\n$2")
+      .replace(/([^.!?])\s*\n/g, "$1. ")
+      .replace(/\s+/g, " ")
       .trim();
   }
 
@@ -200,7 +220,6 @@ class SpeechService {
     }
   }
 
-  // Get available voices
   getVoices(): SpeechSynthesisVoice[] {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       return speechSynthesis.getVoices();
@@ -208,12 +227,10 @@ class SpeechService {
     return [];
   }
 
-  // Set voice by name
   setVoice(voiceName: string) {
     this.selectedVoice = voiceName;
   }
 
-  // Check if speech synthesis is supported
   isSpeechSynthesisSupported(): boolean {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }

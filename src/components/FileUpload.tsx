@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText, AlertCircle, Info, AlertTriangle, UploadCloud } from "lucide-react";
@@ -21,7 +20,6 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
   const [pdfInfo, setPdfInfo] = useState<{ pages: number } | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    // Reset previous state
     setFileError(null);
     setFileWarning(null);
     setPdfInfo(null);
@@ -34,9 +32,9 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
       return;
     }
 
-    if (file.size > 15 * 1024 * 1024) {
-      setFileError("PDF file is too large. Maximum size is 15MB.");
-      toast.error("PDF file is too large. Maximum size is 15MB.");
+    if (file.size > 30 * 1024 * 1024) {
+      setFileError("PDF file is too large. Maximum size is 30MB.");
+      toast.error("PDF file is too large. Maximum size is 30MB.");
       return;
     }
 
@@ -117,7 +115,7 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
               <div className="text-center">
                 <p className="text-lg font-medium">Drag and drop your PDF here</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  or click to select a file (max 15MB)
+                  or click to select a file (max 30MB)
                 </p>
               </div>
             </>
@@ -148,7 +146,6 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
         </Alert>
       )}
 
-      {/* Add a reset button if resetFileState is provided and showResetButton is true */}
       {resetFileState && showResetButton && (
         <div className="flex justify-center mt-4">
           <Button 
