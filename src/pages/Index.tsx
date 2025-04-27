@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { speechService } from "@/utils/speech";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Trash2, BookOpen, RotateCw, Upload } from "lucide-react";
+import { AlertCircle, Trash2, BookOpen, RotateCw, UploadCloud } from "lucide-react";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
 import { Button } from "@/components/ui/button";
 import {
@@ -469,7 +469,7 @@ const Index = () => {
                         size="sm"
                         className="text-brand-purple hover:bg-brand-purple/10"
                       >
-                        <Upload className="mr-2 h-4 w-4" />
+                        <UploadCloud className="mr-2 h-4 w-4" />
                         Start Reading
                       </Button>
                     </div>
