@@ -8,21 +8,22 @@ const DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds timeout
 export async function generateSummaryWithGemini(prompt: string, content: string): Promise<string> {
   try {
     // Get API key from Supabase - use the correct table and column names
-    const { data, error: keyError } = await supabase
+    const { data: secretData, error: keyError } = await supabase
       .from('secrets')
-      .select('gemini_key')
+      .select('value')
+      .eq('name', 'GEMINI_API_KEY')
       .single();
 
-    if (keyError || !data || !data.gemini_key) {
+    if (keyError || !secretData) {
       console.error("Error fetching Gemini API key:", keyError);
       throw new Error("API key not available. Please configure your API key.");
     }
 
-    const gemini_api_key = data.gemini_key;
+    const geminiApiKey = secretData.value;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT);
 
-    const response = await fetch(`${API_URL}?key=${gemini_api_key}`, {
+    const response = await fetch(`${API_URL}?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -54,18 +55,18 @@ export async function generateSummaryWithGemini(prompt: string, content: string)
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Gemini API error (${response.status}): ${errorData}`);
+      const errorText = await response.text();
+      throw new Error(`Gemini API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
+    const apiResponseData = await response.json();
     
-    if (!data.candidates || data.candidates.length === 0) {
+    if (!apiResponseData.candidates || apiResponseData.candidates.length === 0) {
       throw new Error("No summary generated");
     }
 
     // Extract the summarized text from the response
-    const summary = data.candidates[0]?.content?.parts?.[0]?.text || "";
+    const summary = apiResponseData.candidates[0]?.content?.parts?.[0]?.text || "";
     return summary;
   } catch (error: any) {
     console.error("Gemini summarization error:", error);
