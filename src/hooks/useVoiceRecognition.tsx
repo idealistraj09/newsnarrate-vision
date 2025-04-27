@@ -131,62 +131,70 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
     } else if (text.includes('go to main') || text.includes('go main')) {
       navigate('/main');
       return;
-    } else if (text.includes('go to news') || text.includes('show news')) {
+    } else if (text.includes('go to news') || text.includes('show news') || 
+               text.includes('trending news') || text.includes('news page')) {
       navigate('/trending-news');
       return;
-    } else if (text.includes('upload pdf') || text.includes('upload document')) {
+    } else if (text.includes('upload pdf') || text.includes('upload document') || 
+               text.includes('new document') || text.includes('add pdf')) {
       navigate('/main');
+      return;
+    } else if (text.includes('refresh page') || text.includes('reload page')) {
+      window.location.reload();
       return;
     }
     
     // Check for play/pause commands
-    if (text.includes('play audio') || text.includes('start audio') || text.includes('start reading')) {
+    if (text.includes('play audio') || text.includes('start audio') || 
+        text.includes('start reading') || text.includes('listen to this')) {
       const playButton = document.querySelector('[aria-label="Start Reading"]');
       safeClick(playButton);
       return;
     }
     
-    if (text.includes('pause audio') || text.includes('stop audio') || text.includes('stop reading')) {
+    if (text.includes('pause audio') || text.includes('stop audio') || 
+        text.includes('pause reading') || text.includes('pause voice')) {
       const pauseButton = document.querySelector('[aria-label="Pause"]');
       safeClick(pauseButton);
       return;
     }
     
-    if (text.includes('resume audio') || text.includes('continue reading')) {
+    if (text.includes('resume audio') || text.includes('continue reading') || 
+        text.includes('resume voice') || text.includes('continue audio')) {
       const resumeButton = document.querySelector('[aria-label="Resume"]');
       safeClick(resumeButton);
       return;
     }
     
-    if (text.includes('stop speech') || text.includes('stop voice')) {
+    if (text.includes('stop speech') || text.includes('stop voice') || 
+        text.includes('quiet') || text.includes('silence')) {
       const stopButton = document.querySelector('[aria-label="Stop"]');
       safeClick(stopButton);
       return;
     }
 
-    // Check for language change commands
-    if (text.includes('switch to english') || text.includes('use english')) {
-      changeLanguage('en-US');
-      return;
-    }
-    
-    if (text.includes('switch to spanish') || text.includes('use spanish')) {
-      changeLanguage('es-ES');
-      return;
-    }
-    
-    if (text.includes('switch to french') || text.includes('use french')) {
-      changeLanguage('fr-FR');
-      return;
-    }
-    
-    if (text.includes('switch to german') || text.includes('use german')) {
-      changeLanguage('de-DE');
+    // Category navigation for news
+    if (text.includes('show politics') || text.includes('politics news')) {
+      const politicsButton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent?.includes('Politics'));
+      safeClick(politicsButton);
       return;
     }
 
-    if (text.includes('switch to italian') || text.includes('use italian')) {
-      changeLanguage('it-IT');
+    if (text.includes('show sports') || text.includes('sports news')) {
+      const sportsButton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent?.includes('Sports'));
+      safeClick(sportsButton);
+      return;
+    }
+
+    if (text.includes('show technology') || text.includes('tech news')) {
+      const techButton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent?.includes('Technology'));
+      safeClick(techButton);
+      return;
+    }
+
+    if (text.includes('show all news') || text.includes('all categories')) {
+      const allButton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent === 'All');
+      safeClick(allButton);
       return;
     }
 

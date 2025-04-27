@@ -13,7 +13,6 @@ const TrendingNewsPage: React.FC = () => {
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [loading, setLoading] = useState<boolean>(false);
-  const [currentLanguage, setCurrentLanguage] = useState<string>('en-US');
   
   useEffect(() => {
     fetchNews(selectedCategory);
@@ -37,19 +36,12 @@ const TrendingNewsPage: React.FC = () => {
     }
   };
 
-  const handleLanguageChange = (language: string) => {
-    setCurrentLanguage(language);
-    speechService.setLanguage(language);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/95 pb-20">
       <NewsHeader 
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
         categories={categories}
-        currentLanguage={currentLanguage}
-        onLanguageChange={handleLanguageChange}
       />
 
       <main className="container mx-auto px-4 py-12">
@@ -71,7 +63,6 @@ const TrendingNewsPage: React.FC = () => {
                 index={index}
                 playingIndex={playingIndex}
                 setPlayingIndex={setPlayingIndex}
-                language={currentLanguage}
               />
             ))}
           </div>

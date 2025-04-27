@@ -30,9 +30,6 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
       if (playingIndex !== null) {
         speechService.stop();
       }
-      if (language) {
-        speechService.setLanguage(language);
-      }
       speechService.speak(text);
       setPlayingIndex(index);
     }
@@ -95,6 +92,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
               <Button
                 onClick={() => handlePlayPause(article.title + ". " + article.description)}
                 className={`w-full ${isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-purple hover:bg-brand-purple/90'}`}
+                aria-label={isPlaying ? "Pause" : "Start Reading"}
               >
                 {isPlaying ? (
                   <>

@@ -1,15 +1,8 @@
 
 import React, { useState } from 'react';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
-import { Mic, MicOff, Settings, Check } from 'lucide-react';
+import { Mic, MicOff, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 const VoiceCommandPanel: React.FC = () => {
@@ -19,31 +12,10 @@ const VoiceCommandPanel: React.FC = () => {
     toggleListening,
     transcript,
     interimTranscript,
-    error,
-    commands,
-    currentLanguage,
-    changeLanguage
+    error
   } = useVoiceRecognition({
     autoStart: false
   });
-
-  const languages = [
-    { code: 'en-US', name: 'English (US)' },
-    { code: 'es-ES', name: 'Español' },
-    { code: 'fr-FR', name: 'Français' },
-    { code: 'de-DE', name: 'Deutsch' },
-    { code: 'it-IT', name: 'Italiano' },
-    { code: 'pt-BR', name: 'Português (Brasil)' },
-    { code: 'ja-JP', name: '日本語' },
-    { code: 'zh-CN', name: '中文 (简体)' },
-    { code: 'ru-RU', name: 'Русский' },
-    { code: 'ar-SA', name: 'العربية' },
-  ];
-
-  const handleLanguageChange = (langCode: string) => {
-    changeLanguage(langCode);
-    toast.success(`Voice commands now in ${languages.find(l => l.code === langCode)?.name || langCode}`);
-  };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
@@ -82,32 +54,13 @@ const VoiceCommandPanel: React.FC = () => {
                   <li>"Start reading"</li>
                   <li>"Pause" / "Resume"</li>
                   <li>"Stop reading"</li>
-                  <li>"Switch to [language]"</li>
+                  <li>"Show politics news"</li>
+                  <li>"Show sports news"</li>
+                  <li>"Show tech news"</li>
+                  <li>"Show all news"</li>
+                  <li>"Refresh page"</li>
                 </ul>
               </div>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Language: {languages.find(l => l.code === currentLanguage)?.name || currentLanguage}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {languages.map((lang) => (
-                    <DropdownMenuItem 
-                      key={lang.code}
-                      onClick={() => handleLanguageChange(lang.code)}
-                      className="flex items-center justify-between"
-                    >
-                      {lang.name}
-                      {currentLanguage === lang.code && (
-                        <Check className="h-4 w-4 ml-2" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
               
               {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
             </div>
