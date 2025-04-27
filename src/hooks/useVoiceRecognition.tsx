@@ -1,274 +1,192 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 
-interface VoiceRecognitionOptions {
-  language?: string;
+interface UseVoiceRecognitionOptions {
+  commands?: Record<string, () => void>;
   continuous?: boolean;
-  autoStart?: boolean;
+  language?: string;
 }
 
-interface VoiceCommand {
-  command: string | RegExp;
-  callback: (args?: string) => void;
-  description?: string;
-}
+// Helper function to safely call click on DOM elements
+const safeClick = (element: Element | null) => {
+  if (element && 'click' in element) {
+    (element as HTMLElement).click();
+  }
+};
 
-export const useVoiceRecognition = (options: VoiceRecognitionOptions = {}) => {
+export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
-  const [currentLanguage, setCurrentLanguage] = useState(options.language || 'en-US');
-  
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [commands, setCommands] = useState<string[]>([]);
   const recognitionRef = useRef<any>(null);
-  const commandsRef = useRef<VoiceCommand[]>([]);
   const navigate = useNavigate();
-  
-  // Initialize SpeechRecognition with browser prefixes
-  const initRecognition = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.error('Speech recognition not supported in this browser');
-      return null;
-    }
-    
-    const recognition = new SpeechRecognition();
-    recognition.continuous = options.continuous ?? true;
-    recognition.interimResults = true;
-    recognition.lang = currentLanguage;
-    
-    recognition.onstart = () => {
-      console.log('Voice recognition started');
-      setIsListening(true);
-    };
-    
-    recognition.onend = () => {
-      console.log('Voice recognition ended');
-      setIsListening(false);
-      
-      // Auto restart if continuous mode is enabled
-      if ((options.continuous ?? true) && recognitionRef.current) {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.error('Error restarting recognition:', e);
-        }
-      }
-    };
-    
-    recognition.onerror = (event: any) => {
-      console.error('Recognition error:', event.error);
-      if (event.error === 'not-allowed') {
-        toast.error('Microphone access denied. Please enable it to use voice commands.');
-      }
-    };
-    
-    recognition.onresult = (event: any) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
-      
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-      
-      if (finalTranscript) {
-        console.log('Voice command received:', finalTranscript);
-        setTranscript(finalTranscript);
-        processCommand(finalTranscript.toLowerCase().trim());
-      }
-    };
-    
-    return recognition;
-  }, [currentLanguage, options.continuous]);
-  
-  const processCommand = useCallback((transcript: string) => {
-    for (const { command, callback } of commandsRef.current) {
-      if (typeof command === 'string') {
-        if (transcript.includes(command.toLowerCase())) {
-          callback();
-          return;
-        }
-      } else if (command instanceof RegExp) {
-        const match = transcript.match(command);
-        if (match) {
-          // Extract the parameter if available (usually in capture group 1)
-          const param = match[1] || match[0];
-          callback(param);
-          return;
-        }
-      }
-    }
-  }, []);
-  
-  const registerCommands = useCallback((commands: VoiceCommand[]) => {
-    commandsRef.current = commands;
-  }, []);
-  
-  const initDefaultCommands = useCallback(() => {
-    const defaultCommands: VoiceCommand[] = [
-      {
-        command: /go to (home|main|trending news|news)/i,
-        callback: (destination) => {
-          let route = '/';
-          if (destination) {
-            if (destination.includes('main')) route = '/main';
-            else if (destination.includes('news') || destination.includes('trending')) route = '/trending-news';
-          }
-          toast.info(`Navigating to ${destination}`);
-          navigate(route);
-        },
-        description: 'Navigate to pages, e.g. "go to home"'
-      },
-      {
-        command: /(start|begin|play) reading/i,
-        callback: () => {
-          document.querySelector('button:contains("Start Reading")')?.click();
-          toast.info('Starting to read');
-        },
-        description: 'Start reading the document'
-      },
-      {
-        command: /(stop|pause) reading/i,
-        callback: () => {
-          toast.info('Stopping reading');
-          document.querySelectorAll('button').forEach(btn => {
-            if (btn.textContent?.includes('Pause')) btn.click();
-          });
-        },
-        description: 'Stop reading'
-      },
-      {
-        command: /show (summary|summarize)/i,
-        callback: () => {
-          document.querySelector('[value="summary"]')?.click();
-          toast.info('Switching to summary view');
-        },
-        description: 'Show document summary'
-      },
-      {
-        command: /show content/i,
-        callback: () => {
-          document.querySelector('[value="content"]')?.click();
-          toast.info('Switching to content view');
-        },
-        description: 'Show document content'
-      },
-      {
-        command: /upload (document|file|pdf)/i,
-        callback: () => {
-          document.querySelector('input[type="file"]')?.click();
-          toast.info('Please select a file to upload');
-        },
-        description: 'Open file upload dialog'
-      },
-      {
-        command: /help/i,
-        callback: () => {
-          const commands = commandsRef.current
-            .filter(cmd => cmd.description)
-            .map(cmd => `• ${cmd.description}`)
-            .join('\n');
-          
-          toast.info(
-            <div>
-              <p className="font-semibold">Available voice commands:</p>
-              <ul className="list-disc pl-4 mt-2 text-sm">
-                {commandsRef.current
-                  .filter(cmd => cmd.description)
-                  .map((cmd, i) => (
-                    <li key={i}>{cmd.description}</li>
-                  ))
-                }
-              </ul>
-            </div>,
-            {
-              duration: 8000,
-            }
-          );
-        },
-        description: 'Show available voice commands'
-      }
-    ];
-    
-    registerCommands(defaultCommands);
-  }, [navigate, registerCommands]);
-  
+
+  // Initialize recognition
   useEffect(() => {
-    // Initialize available languages
-    if (typeof window !== 'undefined' && navigator.languages) {
-      setAvailableLanguages(navigator.languages);
+    // Use browser prefixed version if standard is not available
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setError('Speech recognition is not supported in your browser');
+      return;
     }
-    
-    // Set up default commands
-    initDefaultCommands();
-    
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = options.continuous ?? true;
+      recognition.interimResults = true;
+      recognition.lang = options.language || 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setError(null);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech Recognition Error', event);
+        setError(`Speech recognition error: ${event.error}`);
+        setIsListening(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        let interimText = '';
+        let finalText = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript + ' ';
+          } else {
+            interimText += transcript;
+          }
+        }
+
+        setInterimTranscript(interimText);
+        
+        if (finalText) {
+          setTranscript(finalText);
+          processCommand(finalText.toLowerCase().trim());
+        }
+      };
+
+      recognitionRef.current = recognition;
+    } catch (err) {
+      console.error('Error initializing speech recognition:', err);
+      setError('Failed to initialize speech recognition');
+    }
+
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore errors on cleanup
+        }
       }
     };
-  }, [initDefaultCommands]);
-  
+  }, [options.continuous, options.language]);
+
+  // Update commands when options.commands changes
   useEffect(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    if (options.commands) {
+      // Convert to mutable array before setting state
+      setCommands(Object.keys(options.commands).slice());
+    }
+  }, [options.commands]);
+
+  const processCommand = useCallback((text: string) => {
+    console.log('Processing command:', text);
+    
+    // Check for built-in navigation commands
+    if (text.includes('go to home') || text.includes('go home')) {
+      navigate('/');
+      return;
+    } else if (text.includes('go to main') || text.includes('go main')) {
+      navigate('/main');
+      return;
+    } else if (text.includes('go to news') || text.includes('show news')) {
+      navigate('/trending-news');
+      return;
+    } else if (text.includes('upload pdf') || text.includes('upload document')) {
+      navigate('/main');
+      return;
     }
     
-    recognitionRef.current = initRecognition();
+    // Check for play/pause commands
+    if (text.includes('play audio') || text.includes('start audio') || text.includes('start reading')) {
+      const playButton = document.querySelector('[aria-label="Start Reading"]');
+      safeClick(playButton);
+      return;
+    }
     
-    if (options.autoStart && recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-      } catch (e) {
-        console.error('Error starting recognition:', e);
+    if (text.includes('pause audio') || text.includes('stop audio') || text.includes('stop reading')) {
+      const pauseButton = document.querySelector('[aria-label="Pause"]');
+      safeClick(pauseButton);
+      return;
+    }
+    
+    if (text.includes('resume audio') || text.includes('continue reading')) {
+      const resumeButton = document.querySelector('[aria-label="Resume"]');
+      safeClick(resumeButton);
+      return;
+    }
+    
+    if (text.includes('stop speech') || text.includes('stop voice')) {
+      const stopButton = document.querySelector('[aria-label="Stop"]');
+      safeClick(stopButton);
+      return;
+    }
+
+    // Check for user-defined commands
+    if (options.commands) {
+      for (const [command, action] of Object.entries(options.commands)) {
+        if (text.includes(command.toLowerCase())) {
+          action();
+          return;
+        }
       }
     }
-  }, [currentLanguage, initRecognition, options.autoStart]);
-  
+  }, [navigate, options.commands]);
+
   const startListening = useCallback(() => {
-    if (!recognitionRef.current) {
-      recognitionRef.current = initRecognition();
-    }
-    
     if (recognitionRef.current && !isListening) {
       try {
         recognitionRef.current.start();
-      } catch (e) {
-        console.error('Error starting recognition:', e);
+      } catch (err) {
+        console.error('Error starting recognition:', err);
       }
     }
-  }, [initRecognition, isListening]);
-  
+  }, [isListening]);
+
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.error('Error stopping recognition:', e);
-      }
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
     }
-  }, []);
-  
-  const changeLanguage = useCallback((language: string) => {
-    setCurrentLanguage(language);
-  }, []);
-  
+  }, [isListening]);
+
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  }, [isListening, startListening, stopListening]);
+
   return {
     isListening,
     transcript,
+    interimTranscript,
     startListening,
     stopListening,
-    registerCommands,
-    changeLanguage,
-    currentLanguage,
-    availableLanguages
+    toggleListening,
+    error,
+    commands
   };
 };

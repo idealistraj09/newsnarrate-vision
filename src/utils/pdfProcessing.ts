@@ -83,3 +83,27 @@ async function processPage(pdf: pdfjs.PDFDocumentProxy, pageNumber: number): Pro
   // Add page separator
   return `${text}\n\n`;
 }
+
+// Function to check if a PDF has extractable text
+export const hasPDFExtractableText = async (file: File): Promise<boolean> => {
+  try {
+    const text = await extractTextFromPDF(file);
+    // Check if extracted text has meaningful content (not just whitespace or common PDF artifacts)
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    return cleanText.length > 50; // Arbitrary threshold
+  } catch (error) {
+    console.error("Error checking PDF text extractability:", error);
+    return false;
+  }
+};
+
+// Function to estimate PDF page count
+export const estimatePDFPageCount = async (arrayBuffer: ArrayBuffer): Promise<number> => {
+  try {
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    return pdf.numPages;
+  } catch (error) {
+    console.error("Error estimating PDF page count:", error);
+    return 0;
+  }
+};

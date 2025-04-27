@@ -3,7 +3,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText, AlertCircle, Info, AlertTriangle, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { hasPDFExtractableText, estimatePDFPageCount, extractTextFromPDF } from "@/utils/pdfProcessing";
+import { extractTextFromPDF, hasPDFExtractableText, estimatePDFPageCount } from "@/utils/pdfProcessing";
 import { Button } from "@/components/ui/button";
 
 interface FileUploadProps {
