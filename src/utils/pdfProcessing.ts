@@ -1,9 +1,9 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Set up the worker correctly
-const workerSrc = await import('pdfjs-dist/build/pdf.worker.mjs');
-pdfjs.GlobalWorkerOptions.workerSrc = workerSrc.default;
+// Set up the worker correctly using CDN approach which is more compatible with bundlers
+const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_CDN;
 
 const MAX_PDF_SIZE_MB = 30; // Increased to 30MB
 
