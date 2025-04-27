@@ -6,6 +6,7 @@ interface UseVoiceRecognitionOptions {
   commands?: Record<string, () => void>;
   continuous?: boolean;
   language?: string;
+  autoStart?: boolean;
 }
 
 // Helper function to safely call click on DOM elements
@@ -21,6 +22,7 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [commands, setCommands] = useState<string[]>([]);
+  const [currentLanguage, setCurrentLanguage] = useState(options.language || 'en-US');
   const recognitionRef = useRef<any>(null);
   const navigate = useNavigate();
 
@@ -38,7 +40,7 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
       const recognition = new SpeechRecognition();
       recognition.continuous = options.continuous ?? true;
       recognition.interimResults = true;
-      recognition.lang = options.language || 'en-US';
+      recognition.lang = currentLanguage;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -47,6 +49,17 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
 
       recognition.onend = () => {
         setIsListening(false);
+        
+        // Auto restart if needed
+        if (options.autoStart) {
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch (e) {
+              // Ignore errors on auto-restart
+            }
+          }, 300);
+        }
       };
 
       recognition.onerror = (event: any) => {
@@ -91,7 +104,7 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
         }
       }
     };
-  }, [options.continuous, options.language]);
+  }, [options.continuous, currentLanguage, options.autoStart]);
 
   // Update commands when options.commands changes
   useEffect(() => {
@@ -100,6 +113,13 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
       setCommands(Object.keys(options.commands).slice());
     }
   }, [options.commands]);
+
+  // Auto-start if configured
+  useEffect(() => {
+    if (options.autoStart && recognitionRef.current) {
+      startListening();
+    }
+  }, [options.autoStart]);
 
   const processCommand = useCallback((text: string) => {
     console.log('Processing command:', text);
@@ -144,6 +164,32 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
       return;
     }
 
+    // Check for language change commands
+    if (text.includes('switch to english') || text.includes('use english')) {
+      changeLanguage('en-US');
+      return;
+    }
+    
+    if (text.includes('switch to spanish') || text.includes('use spanish')) {
+      changeLanguage('es-ES');
+      return;
+    }
+    
+    if (text.includes('switch to french') || text.includes('use french')) {
+      changeLanguage('fr-FR');
+      return;
+    }
+    
+    if (text.includes('switch to german') || text.includes('use german')) {
+      changeLanguage('de-DE');
+      return;
+    }
+
+    if (text.includes('switch to italian') || text.includes('use italian')) {
+      changeLanguage('it-IT');
+      return;
+    }
+
     // Check for user-defined commands
     if (options.commands) {
       for (const [command, action] of Object.entries(options.commands)) {
@@ -154,6 +200,28 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
       }
     }
   }, [navigate, options.commands]);
+
+  const changeLanguage = (language: string) => {
+    console.log(`Changing voice recognition language to: ${language}`);
+    setCurrentLanguage(language);
+    
+    // Restart recognition with new language
+    if (recognitionRef.current && isListening) {
+      try {
+        recognitionRef.current.stop();
+        setTimeout(() => {
+          try {
+            recognitionRef.current.lang = language;
+            recognitionRef.current.start();
+          } catch (e) {
+            console.error('Error restarting recognition with new language:', e);
+          }
+        }, 300);
+      } catch (e) {
+        console.error('Error stopping recognition to change language:', e);
+      }
+    }
+  };
 
   const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {
@@ -187,6 +255,8 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
     stopListening,
     toggleListening,
     error,
-    commands
+    commands,
+    currentLanguage,
+    changeLanguage
   };
 };

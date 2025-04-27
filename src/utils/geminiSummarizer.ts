@@ -7,17 +7,18 @@ const DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds timeout
 
 export async function generateSummaryWithGemini(prompt: string, content: string): Promise<string> {
   try {
-    // Get API key from Supabase
-    const { data: { gemini_api_key }, error: keyError } = await supabase
-      .from('api_keys')
-      .select('gemini_api_key')
+    // Get API key from Supabase - use the correct table and column names
+    const { data, error: keyError } = await supabase
+      .from('secrets')
+      .select('gemini_key')
       .single();
 
-    if (keyError || !gemini_api_key) {
+    if (keyError || !data || !data.gemini_key) {
       console.error("Error fetching Gemini API key:", keyError);
       throw new Error("API key not available. Please configure your API key.");
     }
 
+    const gemini_api_key = data.gemini_key;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT);
 
