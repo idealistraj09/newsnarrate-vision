@@ -1,13 +1,12 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Use the exact same version of PDF.js for both the main library and worker
-// Using jsdelivr CDN with a specific version that we know works
-const PDF_VERSION = '3.4.120';
-const WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_VERSION}/build/pdf.worker.min.js`;
+// Use direct import of the worker URL - this is the key to fixing the version mismatch
+// @ts-ignore - TS may not recognize the URL import
+import workerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
-// Set the worker source
-pdfjs.GlobalWorkerOptions.workerSrc = WORKER_URL;
+// Set the worker source using the imported URL
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const MAX_PDF_SIZE_MB = 30; // 30MB limit
 

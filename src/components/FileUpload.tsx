@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileText, AlertCircle, Info, AlertTriangle, UploadCloud } from "lucide-react";
+import { Upload, FileText, AlertCircle, Info, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
@@ -17,11 +17,9 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [pdfInfo, setPdfInfo] = useState<{ pages: number } | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setFileError(null);
-    setPdfInfo(null);
 
     const file = acceptedFiles[0];
 
