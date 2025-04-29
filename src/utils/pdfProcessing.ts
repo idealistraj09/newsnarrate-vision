@@ -1,12 +1,9 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Use direct import of the worker URL - this is the key to fixing the version mismatch
-// @ts-ignore - TS may not recognize the URL import
-import workerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url';
-
-// Set the worker source using the imported URL
-pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+// Configure the worker for pdf.js - use a standard approach that works with Vite
+// This loads the worker from the same location as the main pdf.js file
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 const MAX_PDF_SIZE_MB = 30; // 30MB limit
 

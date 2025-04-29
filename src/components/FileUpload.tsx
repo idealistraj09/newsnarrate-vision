@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileText, AlertCircle, Info, UploadCloud } from "lucide-react";
+import { FileText, AlertCircle, Info, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { extractTextFromPDF } from "@/utils/pdfProcessing";
