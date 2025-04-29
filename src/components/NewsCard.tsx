@@ -15,10 +15,9 @@ interface NewsCardProps {
   index: number;
   playingIndex: number | null;
   setPlayingIndex: (index: number | null) => void;
-  language?: string;
 }
 
-const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPlayingIndex, language = 'en-US' }) => {
+const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPlayingIndex }) => {
   const [expanded, setExpanded] = useState(false);
   const isPlaying = playingIndex === index;
   
@@ -63,7 +62,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
             <TabsTrigger value="read">Read</TabsTrigger>
             <TabsTrigger value="listen">Listen</TabsTrigger>
           </TabsList>
-          <TabsContent value="read" className="min-h-[200px]">
+          <TabsContent value="read" className="min-h-[240px] max-h-[400px] overflow-y-auto">
             <div className="space-y-3">
               <p className="text-sm text-foreground/90">{displayDescription}</p>
               
@@ -87,26 +86,24 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
               )}
             </div>
           </TabsContent>
-          <TabsContent value="listen" className="min-h-[200px] flex items-center">
-            <div className="flex justify-center w-full">
-              <Button
-                onClick={() => handlePlayPause(article.title + ". " + article.description)}
-                className={`w-full ${isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-purple hover:bg-brand-purple/90'}`}
-                aria-label={isPlaying ? "Pause" : "Start Reading"}
-              >
-                {isPlaying ? (
-                  <>
-                    <Pause className="mr-2 h-4 w-4" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Listen Now
-                  </>
-                )}
-              </Button>
-            </div>
+          <TabsContent value="listen" className="min-h-[240px] flex items-center justify-center p-6">
+            <Button
+              onClick={() => handlePlayPause(article.title + ". " + article.description)}
+              className={`w-full ${isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-purple hover:bg-brand-purple/90'}`}
+              aria-label={isPlaying ? "Pause" : "Start Reading"}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="mr-2 h-4 w-4" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Listen Now
+                </>
+              )}
+            </Button>
           </TabsContent>
         </Tabs>
       </CardContent>

@@ -1,9 +1,8 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Set up the worker correctly using CDN approach which is more compatible with bundlers
-// Using a more reliable CDN URL for pdf.js worker
-const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.js';
+// Set up the worker correctly using a more reliable JSDelivr CDN
+const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
 pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_CDN;
 
 const MAX_PDF_SIZE_MB = 30; // Increased to 30MB

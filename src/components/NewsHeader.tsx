@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -38,17 +37,14 @@ const NewsHeader: React.FC<NewsHeaderProps> = ({
               <Button
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"}
-                className={`whitespace-nowrap ${
+                className={`whitespace-nowrap relative ${
                   selectedCategory === category ? "bg-brand-purple hover:bg-brand-purple/90" : ""
                 }`}
                 onClick={() => setSelectedCategory(category)}
               >
                 {category}
                 {selectedCategory === category && (
-                  <motion.div
-                    layoutId="activePill"
-                    className="absolute inset-0 bg-brand-purple rounded-md -z-10"
-                  />
+                  <span className="absolute inset-0 bg-brand-purple rounded-md -z-10 animate-pulse-subtle" />
                 )}
               </Button>
             ))}
