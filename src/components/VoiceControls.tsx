@@ -3,13 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause } from "lucide-react";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -62,12 +55,6 @@ export const VoiceControls = ({
     }
   }, []);
 
-  const handleVoiceChange = (voiceName: string) => {
-    if (onVoiceChange) {
-      onVoiceChange(voiceName);
-    }
-  };
-
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t p-4">
       <div className="container max-w-4xl mx-auto">
@@ -105,7 +92,7 @@ export const VoiceControls = ({
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TooltipProvider>
               <div>
                 <label className="text-sm font-medium mb-2 block">Speed: {speed.toFixed(1)}x</label>
@@ -147,26 +134,6 @@ export const VoiceControls = ({
                 </Tooltip>
               </div>
             </TooltipProvider>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Voice</label>
-              {availableVoices.length > 0 ? (
-                <Select onValueChange={handleVoiceChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select voice" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {availableVoices.map((voice) => (
-                      <SelectItem key={voice.name} value={voice.name}>
-                        {voice.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="text-sm text-muted-foreground">Loading voices...</div>
-              )}
-            </div>
           </div>
         </div>
       </div>

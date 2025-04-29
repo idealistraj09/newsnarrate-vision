@@ -1,11 +1,15 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Set up the worker correctly using a more reliable JSDelivr CDN with matching version
-const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
-pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_CDN;
+// Use the exact same version of PDF.js for both the main library and worker
+// Using jsdelivr CDN with a specific version that we know works
+const PDF_VERSION = '3.4.120';
+const WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_VERSION}/build/pdf.worker.min.js`;
 
-const MAX_PDF_SIZE_MB = 30; // Increased to 30MB
+// Set the worker source
+pdfjs.GlobalWorkerOptions.workerSrc = WORKER_URL;
+
+const MAX_PDF_SIZE_MB = 30; // 30MB limit
 
 // Function to extract text from PDF file
 export const extractTextFromPDF = async (file: File): Promise<string> => {

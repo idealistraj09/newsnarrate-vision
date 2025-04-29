@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText, AlertCircle, Info, AlertTriangle, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { extractTextFromPDF, hasPDFExtractableText, estimatePDFPageCount } from "@/utils/pdfProcessing";
+import { extractTextFromPDF } from "@/utils/pdfProcessing";
 import { Button } from "@/components/ui/button";
 
 interface FileUploadProps {
@@ -16,13 +16,11 @@ interface FileUploadProps {
 export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = false }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [fileWarning, setFileWarning] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [pdfInfo, setPdfInfo] = useState<{ pages: number } | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setFileError(null);
-    setFileWarning(null);
     setPdfInfo(null);
 
     const file = acceptedFiles[0];
@@ -41,38 +39,23 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
 
     try {
       setIsAnalyzing(true);
-      toast.info("Analyzing PDF file...");
+      toast.loading("Processing PDF file...");
 
-      const arrayBuffer = await file.arrayBuffer();
-      const pageCount = await estimatePDFPageCount(arrayBuffer);
-      setPdfInfo({ pages: pageCount });
+      // Extract text from PDF
+      await extractTextFromPDF(file);
 
-      const sampleText = await extractTextFromPDF(file);
-      const hasText = await hasPDFExtractableText(file);
-
-      const isLikelyPoorQuality =
-        sampleText.includes("Text/Image") ||
-        sampleText.includes("endobj") ||
-        sampleText.includes("XObject") ||
-        /[^\x20-\x7E\s.,?!;:'"()[\]{}]/.test(sampleText.slice(0, 500)) ||
-        sampleText.split(/\s+/).filter(w => w.length > 2).length < 20;
-
-      if (isLikelyPoorQuality) {
-        setFileWarning("This PDF may contain scanned content or complex formatting. Text extraction quality might be limited.");
-        toast.warning("This PDF may have limited extractable text or complex formatting.");
-      } else if (!hasText) {
-        setFileWarning("This PDF might have limited extractable text. Results may vary.");
-        toast.warning("Limited extractable text found.");
-      } else {
-        toast.success("PDF file contains clean, extractable text!");
-      }
-
+      // If we got here without errors, the PDF is valid
+      toast.success("PDF processed successfully!");
+      
+      // Call the parent's callback with the file
       onFileSelect(file);
     } catch (err: any) {
-      console.error("PDF analysis failed:", err);
-      toast.error("Error analyzing PDF file: " + err.message);
+      console.error("PDF processing failed:", err);
+      setFileError(`Error processing PDF: ${err.message}`);
+      toast.error(`Error processing PDF: ${err.message}`);
     } finally {
       setIsAnalyzing(false);
+      toast.dismiss();
     }
   }, [onFileSelect]);
 
@@ -108,7 +91,7 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
           {isAnalyzing ? (
             <>
               <div className="h-12 w-12 rounded-full border-4 border-brand-purple border-t-transparent animate-spin"></div>
-              <p className="text-lg font-medium">Analyzing PDF...</p>
+              <p className="text-lg font-medium">Processing PDF...</p>
             </>
           ) : (
             <>
@@ -128,22 +111,6 @@ export const FileUpload = ({ onFileSelect, resetFileState, showResetButton = fal
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{fileError}</AlertDescription>
-        </Alert>
-      )}
-
-      {fileWarning && (
-        <Alert variant="warning">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{fileWarning}</AlertDescription>
-        </Alert>
-      )}
-
-      {pdfInfo && (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            PDF with approximately {pdfInfo.pages} {pdfInfo.pages === 1 ? "page" : "pages"} detected.
-          </AlertDescription>
         </Alert>
       )}
 
