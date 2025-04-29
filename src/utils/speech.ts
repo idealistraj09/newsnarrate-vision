@@ -17,7 +17,7 @@ class SpeechService {
   private initializeBrowserSpeech() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       // Check if voices are already loaded
-      const availableVoices = speechSynthesis.getVoices();
+      const availableVoices = window.speechSynthesis.getVoices();
       if (availableVoices.length > 0) {
         // Filter for high-quality voices and prioritize them
         this.voices = this.filterAndPrioritizeVoices(availableVoices);
@@ -55,8 +55,8 @@ class SpeechService {
 
   private setupVoiceChangeListener() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      speechSynthesis.addEventListener('voiceschanged', () => {
-        this.voices = speechSynthesis.getVoices();
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        this.voices = window.speechSynthesis.getVoices();
         this.isInitialized = true;
         console.log('Voices loaded:', this.voices.length);
       });
@@ -137,7 +137,7 @@ class SpeechService {
           resolve();
         };
         
-        speechSynthesis.speak(utterance);
+        window.speechSynthesis.speak(utterance);
       });
     }
     
@@ -207,7 +207,7 @@ class SpeechService {
     };
 
     try {
-      speechSynthesis.speak(this.utterance);
+      window.speechSynthesis.speak(this.utterance);
     } catch (error) {
       console.error("Error starting speech synthesis:", error);
       this.onStateChange?.(false);
@@ -218,7 +218,7 @@ class SpeechService {
   private setUtteranceVoice(utterance: SpeechSynthesisUtterance) {
     // Get available voices
     if (!this.isInitialized || this.voices.length === 0) {
-      this.voices = speechSynthesis.getVoices();
+      this.voices = window.speechSynthesis.getVoices();
     }
 
     // Try to find a natural-sounding voice
@@ -245,14 +245,14 @@ class SpeechService {
 
   pause() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      speechSynthesis.pause();
+      window.speechSynthesis.pause();
       this.onStateChange?.(false);
     }
   }
 
   resume() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      speechSynthesis.resume();
+      window.speechSynthesis.resume();
       this.onStateChange?.(true);
     }
   }
@@ -260,7 +260,7 @@ class SpeechService {
   stop() {
     try {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        speechSynthesis.cancel();
+        window.speechSynthesis.cancel();
         this.currentPosition = -1; // Mark as stopped
         this.onStateChange?.(false);
         console.log('Speech synthesis stopped successfully.');
@@ -290,7 +290,7 @@ class SpeechService {
 
   getVoices(): SpeechSynthesisVoice[] {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      return speechSynthesis.getVoices();
+      return window.speechSynthesis.getVoices();
     }
     return [];
   }

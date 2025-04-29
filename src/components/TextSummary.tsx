@@ -2,8 +2,9 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, BookOpen, Copy, Check } from "lucide-react";
+import { Loader2, BookOpen, Copy, Check, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface TextSummaryProps {
   originalText: string;
@@ -104,10 +105,16 @@ export const TextSummary: React.FC<TextSummaryProps> = ({
               <p>Analyzing text and generating summary...</p>
               <p className="text-xs mt-1">This might take a moment for longer documents</p>
             </>
-          ) : (
+          ) : originalText ? (
             <>
               <BookOpen className="h-8 w-8 mb-2" />
               <p>Click "Summarize" to generate an AI summary of this document</p>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="h-8 w-8 mb-2 text-amber-500" />
+              <p>A Gemini API key is needed for summarization</p>
+              <p className="text-xs mt-1">Add a 'GEMINI_API_KEY' in your Supabase 'secrets' table</p>
             </>
           )}
         </div>

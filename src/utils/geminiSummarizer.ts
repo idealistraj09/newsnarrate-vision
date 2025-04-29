@@ -14,12 +14,17 @@ export async function generateSummaryWithGemini(prompt: string, content: string)
       .eq('name', 'GEMINI_API_KEY')
       .single();
 
-    if (keyError || !secretData) {
+    if (keyError || !secretData || !secretData.value) {
       console.error("Error fetching Gemini API key:", keyError);
-      throw new Error("API key not available. Please configure your API key.");
+      throw new Error("Gemini API key not found. Please configure your API key in Supabase.");
     }
 
     const geminiApiKey = secretData.value;
+    
+    if (!geminiApiKey || geminiApiKey.trim() === '') {
+      throw new Error("Gemini API key is empty. Please add a valid API key.");
+    }
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT);
 

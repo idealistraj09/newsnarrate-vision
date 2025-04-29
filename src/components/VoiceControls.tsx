@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause } from "lucide-react";
+import { Volume2, SkipBack, SkipForward, Play, Pause } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -38,20 +38,22 @@ export const VoiceControls = ({
   
   useEffect(() => {
     // Get available voices
-    const voices = speechService.getVoices();
-    if (voices.length > 0) {
-      setAvailableVoices(voices);
-    } else {
-      // If voices aren't loaded yet, set up a listener for when they are
-      const checkVoices = () => {
-        const newVoices = speechService.getVoices();
-        if (newVoices.length > 0) {
-          setAvailableVoices(newVoices);
-          window.removeEventListener('voiceschanged', checkVoices);
-        }
-      };
-      window.addEventListener('voiceschanged', checkVoices);
-      return () => window.removeEventListener('voiceschanged', checkVoices);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        setAvailableVoices(voices);
+      } else {
+        // If voices aren't loaded yet, set up a listener for when they are
+        const checkVoices = () => {
+          const newVoices = window.speechSynthesis.getVoices();
+          if (newVoices.length > 0) {
+            setAvailableVoices(newVoices);
+            window.removeEventListener('voiceschanged', checkVoices);
+          }
+        };
+        window.addEventListener('voiceschanged', checkVoices);
+        return () => window.removeEventListener('voiceschanged', checkVoices);
+      }
     }
   }, []);
 
@@ -65,6 +67,7 @@ export const VoiceControls = ({
               size="icon"
               onClick={onSkipBack}
               title="Restart from beginning"
+              aria-label="Start Reading"
             >
               <SkipBack className="h-5 w-5" />
             </Button>
@@ -74,6 +77,7 @@ export const VoiceControls = ({
               size="icon"
               onClick={onPlayPause}
               title={isPlaying ? "Pause" : "Play"}
+              aria-label={isPlaying ? "Pause" : "Resume"}
             >
               {isPlaying ? (
                 <Pause className="h-5 w-5" />
@@ -87,6 +91,7 @@ export const VoiceControls = ({
               size="icon"
               onClick={onSkipForward}
               title="Stop"
+              aria-label="Stop"
             >
               <SkipForward className="h-5 w-5" />
             </Button>
