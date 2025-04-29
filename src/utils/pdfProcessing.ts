@@ -1,7 +1,7 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Set up the worker correctly using a more reliable JSDelivr CDN
+// Set up the worker correctly using a more reliable JSDelivr CDN with matching version
 const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
 pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_CDN;
 

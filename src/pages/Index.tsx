@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { toast } from "sonner";
@@ -44,7 +45,6 @@ const Index = () => {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
   const [contentProcessed, setContentProcessed] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState('en-US');
 
   const abortController = useRef(new AbortController());
 
@@ -245,7 +245,6 @@ const Index = () => {
 
   const handleStartSpeech = () => {
     if (extractedText) {
-      speechService.setLanguage(currentLanguage);
       speechService.speak(extractedText, speed, pitch);
     }
   };
@@ -298,18 +297,6 @@ const Index = () => {
     setSelectedVoice(voiceName);
     speechService.setVoice(voiceName);
 
-    if (isPlaying && extractedText) {
-      speechService.stop();
-      setTimeout(() => {
-        speechService.speak(extractedText, speed, pitch);
-      }, 100);
-    }
-  };
-
-  const handleLanguageChange = (language: string) => {
-    setCurrentLanguage(language);
-    speechService.setLanguage(language);
-    
     if (isPlaying && extractedText) {
       speechService.stop();
       setTimeout(() => {

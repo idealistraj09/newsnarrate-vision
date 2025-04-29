@@ -8,7 +8,6 @@ class SpeechService {
   private voices: SpeechSynthesisVoice[] = [];
   private isInitialized: boolean = false;
   private selectedVoice: string | null = null;
-  private selectedLanguage: string = 'en-US'; // Default language
 
   constructor() {
     this.setupVoiceChangeListener();
@@ -39,9 +38,8 @@ class SpeechService {
       voice.name.toLowerCase().includes('natural')
     );
 
-    // Then natural-sounding voices for the current language
+    // Then natural-sounding voices
     const naturalVoices = voices.filter(voice => 
-      voice.lang.includes(this.selectedLanguage.split('-')[0]) && 
       !voice.name.toLowerCase().includes('premium') &&
       !voice.name.toLowerCase().includes('enhanced') &&
       !voice.name.toLowerCase().includes('neural')
@@ -67,33 +65,6 @@ class SpeechService {
 
   setStateChangeCallback(callback: (isPlaying: boolean) => void) {
     this.onStateChange = callback;
-  }
-
-  setLanguage(languageCode: string) {
-    this.selectedLanguage = languageCode;
-    // Re-filter voices based on new language
-    if (this.voices.length > 0) {
-      this.voices = this.filterAndPrioritizeVoices(speechSynthesis.getVoices());
-    }
-    console.log(`Language set to: ${languageCode}`);
-  }
-
-  getAvailableLanguages(): {code: string, name: string}[] {
-    const uniqueLanguages = new Map<string, string>();
-    
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const voices = speechSynthesis.getVoices();
-      voices.forEach(voice => {
-        if (voice.lang) {
-          const langCode = voice.lang;
-          const langName = new Intl.DisplayNames([navigator.language], { type: 'language' })
-            .of(langCode.split('-')[0]) || langCode;
-          uniqueLanguages.set(langCode, langName);
-        }
-      });
-    }
-    
-    return Array.from(uniqueLanguages.entries()).map(([code, name]) => ({ code, name }));
   }
 
   async speak(text: string, speed: number = 1, pitch: number = 1) {
@@ -150,7 +121,7 @@ class SpeechService {
         utterance.rate = speed;
         utterance.pitch = pitch;
         
-        // Set voice based on selected language
+        // Set voice based on selection
         this.setUtteranceVoice(utterance);
         
         utterance.onstart = () => {
@@ -250,7 +221,7 @@ class SpeechService {
       this.voices = speechSynthesis.getVoices();
     }
 
-    // Try to find a natural-sounding voice for the selected language
+    // Try to find a natural-sounding voice
     let selectedVoice = null;
     
     if (this.selectedVoice) {
@@ -259,26 +230,15 @@ class SpeechService {
     }
     
     if (!selectedVoice) {
-      // Look for voices matching the current language
-      const languageVoices = this.voices.filter(voice => 
-        voice.lang.startsWith(this.selectedLanguage.split('-')[0])
-      );
-      
-      if (languageVoices.length > 0) {
-        // Prefer premium voices
-        selectedVoice = languageVoices.find(voice => 
-          voice.name.toLowerCase().includes('premium') || 
-          voice.name.toLowerCase().includes('enhanced')
-        ) || languageVoices[0];
-      } else {
-        // Fall back to any available voice
-        selectedVoice = this.voices[0];
-      }
+      // Prefer premium voices
+      selectedVoice = this.voices.find(voice => 
+        voice.name.toLowerCase().includes('premium') || 
+        voice.name.toLowerCase().includes('enhanced')
+      ) || this.voices[0];
     }
     
     if (selectedVoice) {
       utterance.voice = selectedVoice;
-      utterance.lang = selectedVoice.lang;
       this.selectedVoice = selectedVoice.name; // Remember this voice
     }
   }
