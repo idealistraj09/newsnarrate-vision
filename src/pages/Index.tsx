@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { toast } from "sonner";
@@ -520,7 +519,6 @@ const Index = () => {
             onSkipForward={handleSkipForward}
             onSpeedChange={handleSpeedChange}
             onPitchChange={handlePitchChange}
-            onVoiceChange={handleVoiceChange}
             speed={speed}
             pitch={pitch}
           />

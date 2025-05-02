@@ -1,8 +1,8 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Specify a specific version that matches our installed dependency
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Use a specific version that's known to work and available on CDN
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js`;
 
 const MAX_PDF_SIZE_MB = 30; // 30MB limit
 

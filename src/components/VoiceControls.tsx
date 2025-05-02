@@ -19,6 +19,7 @@ interface VoiceControlsProps {
   onPitchChange: (value: number) => void;
   speed: number;
   pitch: number;
+  onVoiceChange?: (voiceName: string) => void; // Added as optional
 }
 
 export const VoiceControls = ({

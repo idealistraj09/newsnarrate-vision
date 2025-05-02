@@ -67,24 +67,22 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
               <p className="text-sm text-foreground/90 leading-relaxed">{displayDescription}</p>
               
               {isLongDescription && (
-                <div className="text-center pt-2">
-                  <Button
-                    variant="ghost" 
-                    size="sm"
-                    onClick={toggleExpand}
-                    className="flex items-center gap-1 text-xs text-foreground hover:text-brand-purple"
-                  >
-                    {expanded ? (
-                      <>
-                        <ArrowUp className="h-3 w-3" /> Show less
-                      </>
-                    ) : (
-                      <>
-                        <ArrowDown className="h-3 w-3" /> Read more
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost" 
+                  size="sm"
+                  onClick={toggleExpand}
+                  className="flex items-center gap-1 text-xs text-foreground hover:text-brand-purple mx-auto mt-2"
+                >
+                  {expanded ? (
+                    <>
+                      <ArrowUp className="h-3 w-3" /> Show less
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDown className="h-3 w-3" /> Read more
+                    </>
+                  )}
+                </Button>
               )}
             </div>
           </TabsContent>
