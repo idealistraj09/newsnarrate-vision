@@ -1,12 +1,13 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds timeout
 
 export async function generateSummaryWithGemini(prompt: string, content: string): Promise<string> {
   try {
+    console.log("Attempting to fetch Gemini API key from Supabase...");
+
     // Get API key from Supabase - use the correct table and column names
     const { data: secretData, error: keyError } = await supabase
       .from('secrets')
@@ -16,8 +17,11 @@ export async function generateSummaryWithGemini(prompt: string, content: string)
 
     if (keyError || !secretData || !secretData.value) {
       console.error("Error fetching Gemini API key:", keyError);
+      console.log("Supabase response:", secretData);
       throw new Error("Gemini API key not found. Please configure your API key in Supabase.");
     }
+
+    console.log("Gemini API key fetched successfully.");
 
     const geminiApiKey = secretData.value;
     
@@ -25,7 +29,8 @@ export async function generateSummaryWithGemini(prompt: string, content: string)
       throw new Error("Gemini API key is empty. Please add a valid API key.");
     }
     
-    console.log("Calling Gemini API for summary generation...");
+    console.log("Calling Gemini API with prompt:", prompt);
+    console.log("Content length:", content.length);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT);
 
@@ -38,22 +43,22 @@ export async function generateSummaryWithGemini(prompt: string, content: string)
         contents: [
           {
             parts: [
-              { text: `${prompt}\n\n${content}` }
+              {
+                text: `Please provide a concise summary of the following text. Extract the most important information and main points:
+
+${prompt}\n\n${content}
+
+Summary:`
+              }
             ]
           }
         ],
         generationConfig: {
-          temperature: 0.3,
-          topK: 32,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          }
-        ]
+          temperature: 0.2,
+          maxOutputTokens: 1024,
+          topK: 40,
+          topP: 0.95
+        }
       }),
       signal: controller.signal
     });

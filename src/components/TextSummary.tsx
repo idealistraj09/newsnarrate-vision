@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, BookOpen, Copy, Check, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import ReactMarkdown from 'react-markdown';
 
 interface TextSummaryProps {
   originalText: string;
@@ -80,7 +80,11 @@ export const TextSummary: React.FC<TextSummaryProps> = ({
       {summary ? (
         <div className="relative">
           <div className="p-4 bg-secondary/40 rounded-lg border border-border text-foreground relative">
-            <p className="whitespace-pre-line leading-relaxed">{summary}</p>
+            <div className="whitespace-pre-line leading-relaxed">
+              <ReactMarkdown>
+                {summary}
+              </ReactMarkdown>
+            </div>
             
             <Button
               size="icon"

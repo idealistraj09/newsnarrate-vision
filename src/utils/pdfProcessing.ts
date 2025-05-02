@@ -1,8 +1,7 @@
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min?url';
 
-import * as pdfjs from 'pdfjs-dist';
-
-// Use a specific version that's known to work and available on CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const MAX_PDF_SIZE_MB = 30; // 30MB limit
 
@@ -18,7 +17,7 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
     reader.onload = async (event) => {
       try {
         const arrayBuffer = event.target?.result as ArrayBuffer;
-        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         
         let fullText = '';
         
@@ -54,7 +53,7 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
   });
 };
 
-async function processPage(pdf: pdfjs.PDFDocumentProxy, pageNumber: number): Promise<string> {
+async function processPage(pdf: pdfjsLib.PDFDocumentProxy, pageNumber: number): Promise<string> {
   const page = await pdf.getPage(pageNumber);
   const content = await page.getTextContent();
   
@@ -99,7 +98,7 @@ export const hasPDFExtractableText = async (file: File): Promise<boolean> => {
 // Function to estimate PDF page count
 export const estimatePDFPageCount = async (arrayBuffer: ArrayBuffer): Promise<number> => {
   try {
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     return pdf.numPages;
   } catch (error) {
     console.error("Error estimating PDF page count:", error);

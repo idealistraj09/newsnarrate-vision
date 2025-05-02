@@ -242,6 +242,18 @@ const Index = () => {
     }
   };
 
+  const handlePlayButtonClick = () => {
+    if (activeTab === 'content') {
+      // Get the extracted text from the PDF
+      const pdfText = extractedText; // Assuming extractedText holds the PDF content
+      speechService.speak(pdfText);
+    } else if (activeTab === 'summary') {
+      // Get the summary text
+      const summaryText = summary; // Assuming summary holds the generated summary
+      speechService.speak(summaryText);
+    }
+  };
+
   const handleStartSpeech = () => {
     if (extractedText) {
       speechService.speak(extractedText, speed, pitch);
@@ -468,7 +480,7 @@ const Index = () => {
                         Your PDF has been processed. Use the controls below to listen to the text.
                       </p>
                       <Button
-                        onClick={handleStartSpeech}
+                        onClick={handlePlayButtonClick}
                         variant="outline"
                         size="sm"
                         className="text-brand-purple hover:bg-brand-purple/10"

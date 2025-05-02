@@ -1,4 +1,3 @@
-
 class SpeechService {
   private utterance: SpeechSynthesisUtterance | null = null;
   private onStateChange: ((isPlaying: boolean) => void) | null = null;
@@ -63,6 +62,8 @@ class SpeechService {
   }
 
   async speak(text: string, speed: number = 1, pitch: number = 1) {
+    console.log("Starting speech synthesis...");
+    
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       console.error("Speech synthesis not supported");
       throw new Error("Speech synthesis not supported in this browser");
@@ -82,6 +83,8 @@ class SpeechService {
     this.text = text;
     this.currentPosition = 0;
     
+    console.log("Text to speak:", this.text);
+
     // For longer texts, we use advanced sentence chunking for more natural pauses
     if (text.length > 500) {
       this.chunkSize = 300; // Larger chunks for more context
@@ -228,6 +231,7 @@ class SpeechService {
 
   pause() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      console.log("Pausing speech synthesis...");
       window.speechSynthesis.pause();
       this.onStateChange?.(false);
     }
@@ -235,6 +239,7 @@ class SpeechService {
 
   resume() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      console.log("Resuming speech synthesis...");
       window.speechSynthesis.resume();
       this.onStateChange?.(true);
     }
@@ -243,6 +248,7 @@ class SpeechService {
   stop() {
     try {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        console.log("Stopping speech synthesis...");
         window.speechSynthesis.cancel();
         this.currentPosition = -1; // Mark as stopped
         this.onStateChange?.(false);
