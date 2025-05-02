@@ -45,18 +45,13 @@ class SpeechService {
       !voice.name.toLowerCase().includes('neural')
     );
 
-    // Then all other voices
-    const otherVoices = voices.filter(voice => 
-      !premiumVoices.includes(voice) && !naturalVoices.includes(voice)
-    );
-
-    return [...premiumVoices, ...naturalVoices, ...otherVoices];
+    return [...premiumVoices, ...naturalVoices];
   }
 
   private setupVoiceChangeListener() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.addEventListener('voiceschanged', () => {
-        this.voices = window.speechSynthesis.getVoices();
+        this.voices = this.filterAndPrioritizeVoices(window.speechSynthesis.getVoices());
         this.isInitialized = true;
         console.log('Voices loaded:', this.voices.length);
       });
@@ -145,23 +140,15 @@ class SpeechService {
   }
 
   private preprocessText(text: string): string {
-    // More sophisticated text preprocessing for natural speech
     return text
-      // Fix common abbreviations
-      .replace(/(\b[A-Z]{2,})/g, (match) => match.split('').join(' ')) // Spell out acronyms
-      .replace(/(\d+)\.(\d+)/g, "$1 point $2") // Read decimals properly
+      .replace(/(\b[A-Z]{2,})/g, (match) => match.split('').join(' '))
+      .replace(/(\d+)\.(\d+)/g, "$1 point $2")
       .replace(/&/g, " and ")
       .replace(/(\w)-(\w)/g, "$1 $2")
-      // Add natural pauses
       .replace(/([.!?])\s+/g, "$1\n\n")
-      // Fix sentence boundaries with capital letters
       .replace(/([A-Z][a-z]+)\s+([A-Z])/g, "$1.\n$2")
       .replace(/([^.!?])\s*\n/g, "$1. ")
-      // Clean up extra spaces
       .replace(/\s+/g, " ")
-      // Add emphasis markers for more natural prosody
-      .replace(/\*([^*]+)\*/g, " <emphasis>$1</emphasis> ")
-      .replace(/_([^_]+)_/g, " <emphasis>$1</emphasis> ")
       .trim();
   }
 
@@ -198,11 +185,7 @@ class SpeechService {
     };
 
     this.utterance.onerror = (event) => {
-      if (event.error === 'interrupted') {
-        console.log('Speech synthesis was interrupted.');
-      } else {
-        console.error('Speech synthesis error:', event);
-      }
+      console.error('Speech synthesis error:', event);
       this.onStateChange?.(false);
     };
 
@@ -218,7 +201,7 @@ class SpeechService {
   private setUtteranceVoice(utterance: SpeechSynthesisUtterance) {
     // Get available voices
     if (!this.isInitialized || this.voices.length === 0) {
-      this.voices = window.speechSynthesis.getVoices();
+      this.voices = this.filterAndPrioritizeVoices(window.speechSynthesis.getVoices());
     }
 
     // Try to find a natural-sounding voice
@@ -263,7 +246,6 @@ class SpeechService {
         window.speechSynthesis.cancel();
         this.currentPosition = -1; // Mark as stopped
         this.onStateChange?.(false);
-        console.log('Speech synthesis stopped successfully.');
       }
     } catch (error) {
       console.error('Error stopping speech synthesis:', error);

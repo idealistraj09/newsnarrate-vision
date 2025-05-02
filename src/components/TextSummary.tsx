@@ -80,7 +80,7 @@ export const TextSummary: React.FC<TextSummaryProps> = ({
       {summary ? (
         <div className="relative">
           <div className="p-4 bg-secondary/40 rounded-lg border border-border text-foreground relative">
-            <p className="whitespace-pre-line">{summary}</p>
+            <p className="whitespace-pre-line leading-relaxed">{summary}</p>
             
             <Button
               size="icon"
@@ -109,6 +109,7 @@ export const TextSummary: React.FC<TextSummaryProps> = ({
             <>
               <BookOpen className="h-8 w-8 mb-2" />
               <p>Click "Summarize" to generate an AI summary of this document</p>
+              <p className="text-xs mt-1">Requires a Gemini API key in Supabase secrets</p>
             </>
           ) : (
             <>

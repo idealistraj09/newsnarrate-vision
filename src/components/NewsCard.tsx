@@ -64,25 +64,27 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, index, playingIndex, setPl
           </TabsList>
           <TabsContent value="read" className="min-h-[240px] max-h-[400px] overflow-y-auto">
             <div className="space-y-3">
-              <p className="text-sm text-foreground/90">{displayDescription}</p>
+              <p className="text-sm text-foreground/90 leading-relaxed">{displayDescription}</p>
               
               {isLongDescription && (
-                <Button
-                  variant="ghost" 
-                  size="sm"
-                  onClick={toggleExpand}
-                  className="flex items-center gap-1 text-xs text-muted-foreground"
-                >
-                  {expanded ? (
-                    <>
-                      <ArrowUp className="h-3 w-3" /> Show less
-                    </>
-                  ) : (
-                    <>
-                      <ArrowDown className="h-3 w-3" /> Read more
-                    </>
-                  )}
-                </Button>
+                <div className="text-center pt-2">
+                  <Button
+                    variant="ghost" 
+                    size="sm"
+                    onClick={toggleExpand}
+                    className="flex items-center gap-1 text-xs text-foreground hover:text-brand-purple"
+                  >
+                    {expanded ? (
+                      <>
+                        <ArrowUp className="h-3 w-3" /> Show less
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDown className="h-3 w-3" /> Read more
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           </TabsContent>

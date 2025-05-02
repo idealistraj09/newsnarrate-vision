@@ -25,6 +25,7 @@ export async function generateSummaryWithGemini(prompt: string, content: string)
       throw new Error("Gemini API key is empty. Please add a valid API key.");
     }
     
+    console.log("Calling Gemini API for summary generation...");
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT);
 
@@ -61,10 +62,12 @@ export async function generateSummaryWithGemini(prompt: string, content: string)
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`Gemini API error (${response.status}):`, errorText);
       throw new Error(`Gemini API error (${response.status}): ${errorText}`);
     }
 
     const apiResponseData = await response.json();
+    console.log("Gemini API response received:", apiResponseData);
     
     if (!apiResponseData.candidates || apiResponseData.candidates.length === 0) {
       throw new Error("No summary generated");

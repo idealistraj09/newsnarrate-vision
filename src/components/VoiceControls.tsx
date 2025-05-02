@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Volume2, SkipBack, SkipForward, Play, Pause } from "lucide-react";
@@ -9,7 +9,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { speechService } from "@/utils/speech";
 
 interface VoiceControlsProps {
   isPlaying: boolean;
@@ -18,7 +17,6 @@ interface VoiceControlsProps {
   onSkipForward: () => void;
   onSpeedChange: (value: number) => void;
   onPitchChange: (value: number) => void;
-  onVoiceChange?: (voiceName: string) => void;
   speed: number;
   pitch: number;
 }
@@ -30,33 +28,9 @@ export const VoiceControls = ({
   onSkipForward,
   onSpeedChange,
   onPitchChange,
-  onVoiceChange,
   speed,
   pitch
 }: VoiceControlsProps) => {
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  
-  useEffect(() => {
-    // Get available voices
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        setAvailableVoices(voices);
-      } else {
-        // If voices aren't loaded yet, set up a listener for when they are
-        const checkVoices = () => {
-          const newVoices = window.speechSynthesis.getVoices();
-          if (newVoices.length > 0) {
-            setAvailableVoices(newVoices);
-            window.removeEventListener('voiceschanged', checkVoices);
-          }
-        };
-        window.addEventListener('voiceschanged', checkVoices);
-        return () => window.removeEventListener('voiceschanged', checkVoices);
-      }
-    }
-  }, []);
-
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t p-4">
       <div className="container max-w-4xl mx-auto">

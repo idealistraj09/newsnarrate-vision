@@ -1,8 +1,7 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Configure the worker for pdf.js - use a standard approach that works with Vite
-// This loads the worker from the same location as the main pdf.js file
+// Specify a specific version that matches our installed dependency
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 const MAX_PDF_SIZE_MB = 30; // 30MB limit

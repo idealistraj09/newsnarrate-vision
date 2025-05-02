@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 interface UseVoiceRecognitionOptions {
   commands?: Record<string, () => void>;
   continuous?: boolean;
-  language?: string;
   autoStart?: boolean;
 }
 
@@ -22,7 +21,6 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [commands, setCommands] = useState<string[]>([]);
-  const [currentLanguage, setCurrentLanguage] = useState(options.language || 'en-US');
   const recognitionRef = useRef<any>(null);
   const navigate = useNavigate();
 
@@ -40,7 +38,7 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
       const recognition = new SpeechRecognition();
       recognition.continuous = options.continuous ?? true;
       recognition.interimResults = true;
-      recognition.lang = currentLanguage;
+      recognition.lang = 'en-US';  // Default to English
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -104,7 +102,7 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
         }
       }
     };
-  }, [options.continuous, currentLanguage, options.autoStart]);
+  }, [options.continuous, options.autoStart]);
 
   // Update commands when options.commands changes
   useEffect(() => {
@@ -209,28 +207,6 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
     }
   }, [navigate, options.commands]);
 
-  const changeLanguage = (language: string) => {
-    console.log(`Changing voice recognition language to: ${language}`);
-    setCurrentLanguage(language);
-    
-    // Restart recognition with new language
-    if (recognitionRef.current && isListening) {
-      try {
-        recognitionRef.current.stop();
-        setTimeout(() => {
-          try {
-            recognitionRef.current.lang = language;
-            recognitionRef.current.start();
-          } catch (e) {
-            console.error('Error restarting recognition with new language:', e);
-          }
-        }, 300);
-      } catch (e) {
-        console.error('Error stopping recognition to change language:', e);
-      }
-    }
-  };
-
   const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {
       try {
@@ -263,8 +239,6 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
     stopListening,
     toggleListening,
     error,
-    commands,
-    currentLanguage,
-    changeLanguage
+    commands
   };
 };
